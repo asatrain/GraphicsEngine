@@ -10,6 +10,7 @@
 		230379432C4AC6770053C8A2 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 230379422C4AC6770053C8A2 /* AppDelegate.m */; };
 		230379482C4AC6780053C8A2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 230379472C4AC6780053C8A2 /* Assets.xcassets */; };
 		2303794D2C4AC6780053C8A2 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 2303794C2C4AC6780053C8A2 /* main.m */; };
+		237F28602C4D5C7C00D1E0BD /* GameView.m in Sources */ = {isa = PBXBuildFile; fileRef = 237F285F2C4D5C7C00D1E0BD /* GameView.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -19,6 +20,8 @@
 		230379472C4AC6780053C8A2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2303794C2C4AC6780053C8A2 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		2303794E2C4AC6780053C8A2 /* GraphicsEngineMacOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GraphicsEngineMacOS.entitlements; sourceTree = "<group>"; };
+		237F285E2C4D5C7C00D1E0BD /* GameView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GameView.h; sourceTree = "<group>"; };
+		237F285F2C4D5C7C00D1E0BD /* GameView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GameView.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -56,6 +59,8 @@
 				230379472C4AC6780053C8A2 /* Assets.xcassets */,
 				2303794C2C4AC6780053C8A2 /* main.m */,
 				2303794E2C4AC6780053C8A2 /* GraphicsEngineMacOS.entitlements */,
+				237F285E2C4D5C7C00D1E0BD /* GameView.h */,
+				237F285F2C4D5C7C00D1E0BD /* GameView.m */,
 			);
 			path = GraphicsEngineMacOS;
 			sourceTree = "<group>";
@@ -128,6 +133,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				237F28602C4D5C7C00D1E0BD /* GameView.m in Sources */,
 				2303794D2C4AC6780053C8A2 /* main.m in Sources */,
 				230379432C4AC6770053C8A2 /* AppDelegate.m in Sources */,
 			);
