@@ -1,0 +1,10 @@
+[package]
+name = "GraphicsEngineLib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[lib]
+name = "graphics_engine"
+crate-type = ["staticlib"]
