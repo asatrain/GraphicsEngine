@@ -6,4 +6,4 @@ typedef struct {
 } Pixel;
 
 extern Pixel* updateAndRender(size_t width, size_t height, float delta_time);
-extern void free_array(Pixel* array, size_t length);
+extern void free_buffer(Pixel* array, size_t length);
