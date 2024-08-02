@@ -35,7 +35,7 @@
     size_t height = self.bounds.size.height;
     
     free_buffer(self.buffer, width * height);
-    self.buffer = updateAndRender(width, height, deltaTimeMs);
+    self.buffer = update_and_render(width, height, deltaTimeMs);
     
     CGContextRef gContext = [[NSGraphicsContext currentContext] CGContext];
     

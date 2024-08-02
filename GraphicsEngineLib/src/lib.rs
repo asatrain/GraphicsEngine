@@ -1,9 +1,9 @@
-use crate::game_logic::update_game;
+use crate::game::update_game;
 use crate::render::render;
 
 mod render;
 mod math;
-mod game_logic;
+mod game;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -15,7 +15,7 @@ pub struct Pixel {
 }
 
 #[no_mangle]
-pub extern "C" fn updateAndRender(width: usize, height: usize, delta_time: f32) -> *mut Pixel {
+pub extern "C" fn update_and_render(width: usize, height: usize, delta_time: f32) -> *mut Pixel {
     let game = update_game(delta_time);
     let mut pixel_buffer = render(width, height, game);
 

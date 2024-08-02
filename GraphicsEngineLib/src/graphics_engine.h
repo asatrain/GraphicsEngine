@@ -5,5 +5,5 @@ typedef struct {
     uint8_t alpha;
 } Pixel;
 
-extern Pixel* updateAndRender(size_t width, size_t height, float delta_time);
+extern Pixel* update_and_render(size_t width, size_t height, float delta_time);
 extern void free_buffer(Pixel* array, size_t length);
