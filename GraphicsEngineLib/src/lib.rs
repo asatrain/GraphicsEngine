@@ -1,4 +1,4 @@
-use crate::game::update_game;
+use crate::game::update_scene;
 use crate::render::{render, ScreenSize};
 
 mod render;
@@ -16,9 +16,9 @@ pub struct Color {
 
 #[no_mangle]
 pub extern "C" fn update_and_render(width: usize, height: usize, delta_time: f32) -> *mut Color {
-    let game = update_game(delta_time);
+    let scene = update_scene(delta_time);
     let screen_size = ScreenSize { width, height };
-    let mut bitmap = render(screen_size, game);
+    let mut bitmap = render(screen_size, &scene);
 
     let bitmap_ptr = bitmap.as_mut_ptr();
     std::mem::forget(bitmap);
@@ -32,5 +32,16 @@ pub extern "C" fn free_buffer(arr: *mut Color, length: usize) {
     }
     unsafe {
         Vec::from_raw_parts(arr, length, length);
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test() {
+        update_and_render(500, 400, 2.5);
     }
 }
