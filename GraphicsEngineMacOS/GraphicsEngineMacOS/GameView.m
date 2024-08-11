@@ -44,7 +44,7 @@
                                                       width,
                                                       height,
                                                       8,
-                                                      width * sizeof(Pixel),
+                                                      width * sizeof(Color),
                                                       colorSpace,
                                                       kCGImageAlphaNoneSkipLast);
     CGImageRef imgRef = CGBitmapContextCreateImage(imgContext);

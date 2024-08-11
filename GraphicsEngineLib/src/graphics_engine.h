@@ -3,7 +3,7 @@ typedef struct {
     uint8_t green;
     uint8_t blue;
     uint8_t alpha;
-} Pixel;
+} Color;
 
-extern Pixel* update_and_render(size_t width, size_t height, float delta_time);
-extern void free_buffer(Pixel* array, size_t length);
+extern Color* update_and_render(size_t width, size_t height, float delta_time);
+extern void free_buffer(Color* array, size_t length);

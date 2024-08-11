@@ -1,5 +1,5 @@
 use crate::game::update_game;
-use crate::render::render;
+use crate::render::{render, ScreenSize};
 
 mod render;
 mod math;
@@ -7,7 +7,7 @@ mod game;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct Pixel {
+pub struct Color {
     red: u8,
     green: u8,
     blue: u8,
@@ -15,17 +15,18 @@ pub struct Pixel {
 }
 
 #[no_mangle]
-pub extern "C" fn update_and_render(width: usize, height: usize, delta_time: f32) -> *mut Pixel {
+pub extern "C" fn update_and_render(width: usize, height: usize, delta_time: f32) -> *mut Color {
     let game = update_game(delta_time);
-    let mut pixel_buffer = render(width, height, game);
+    let screen_size = ScreenSize { width, height };
+    let mut bitmap = render(screen_size, game);
 
-    let pixel_buffer_ptr = pixel_buffer.as_mut_ptr();
-    std::mem::forget(pixel_buffer);
-    return pixel_buffer_ptr;
+    let bitmap_ptr = bitmap.as_mut_ptr();
+    std::mem::forget(bitmap);
+    return bitmap_ptr;
 }
 
 #[no_mangle]
-pub extern "C" fn free_buffer(arr: *mut Pixel, length: usize) {
+pub extern "C" fn free_buffer(arr: *mut Color, length: usize) {
     if arr.is_null() {
         return;
     }
