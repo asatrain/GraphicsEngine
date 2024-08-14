@@ -5,5 +5,6 @@ typedef struct {
     uint8_t alpha;
 } Color;
 
-extern Color* update_and_render(size_t width, size_t height, float delta_time);
-extern void free_buffer(Color* array, size_t length);
+extern void create_scene(void);
+extern Color* update_and_render(int32_t width, int32_t height, float delta_time);
+extern void free_bitmap(Color* array, size_t length);

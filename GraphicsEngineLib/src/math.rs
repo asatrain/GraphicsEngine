@@ -1,4 +1,4 @@
-use std::ops::{Index, Mul};
+use std::ops::Mul;
 
 #[derive(Debug)]
 pub struct Vec2<T> {
@@ -36,7 +36,7 @@ pub struct Triangle {
 }
 
 pub struct Mesh {
-    pub triangles: [Triangle; 12],
+    pub triangles: Vec<Triangle>,
 }
 
 impl<T> Vec2<T> {
@@ -110,7 +110,7 @@ impl Mul<&Vec4> for &Mat4x4 {
 
     fn mul(self, rhs: &Vec4) -> Self::Output {
         let mut res = Vec4::default();
-        let mut content = self.content;
+        let content = self.content;
         res.x = content[0][0] * rhs.x + content[0][1] * rhs.y + content[0][2] * rhs.z + content[0][3] * rhs.w;
         res.y = content[1][0] * rhs.x + content[1][1] * rhs.y + content[1][2] * rhs.z + content[1][3] * rhs.w;
         res.z = content[2][0] * rhs.x + content[2][1] * rhs.y + content[2][2] * rhs.z + content[2][3] * rhs.w;

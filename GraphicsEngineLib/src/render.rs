@@ -2,22 +2,22 @@ use std::cmp::{max, min};
 use std::mem::swap;
 
 use crate::game::Scene;
-use crate::math::{Mat4x4, Triangle, Vec2};
+use crate::math::{Mat4x4, Triangle, Vec2, Vec4};
 use crate::Color;
 
 pub struct ScreenSize {
-    pub width: usize,
-    pub height: usize,
+    pub width: i32,
+    pub height: i32,
 }
 
 #[derive(Clone, Copy)]
-struct BufferedPixel {
+struct DeepPixel {
     color: Color,
     depth: f32,
 }
 
 struct DepthBuffer {
-    buffer: Vec<BufferedPixel>,
+    buffer: Vec<DeepPixel>,
     screen_size: ScreenSize,
 }
 
@@ -29,23 +29,42 @@ struct Camera {
 
 impl DepthBuffer {
     fn new(screen_size: ScreenSize, color: Color) -> Self {
-        let buffered_pixel = BufferedPixel { color, depth: 1.0 };
-
+        let background_pixel = DeepPixel { color, depth: 1.0 };
         Self {
-            buffer: vec![buffered_pixel; screen_size.width * screen_size.height],
+            buffer: vec![background_pixel; (screen_size.width * screen_size.height) as usize],
             screen_size,
         }
     }
 
-    fn set_pixel(&mut self, x: i32, y: i32, pixel: BufferedPixel) {
-        let target_y = self.screen_size.height - y as usize;
-        let target_x = x as usize;
-        let ind = target_y * self.screen_size.width + target_x;
-        if pixel.depth >= 0.0 && ind >= 0 && ind < self.buffer.len() {
-            let old = self.buffer[ind];
-            if pixel.depth <= old.depth {
-                self.buffer[ind] = pixel;
-            }
+    fn screen_space_to_pixel_pos(&self, mut screen_space_x: f32, mut screen_space_y: f32) -> Vec2<i32> {
+        screen_space_x = (screen_space_x + 1.0) / 2.0;
+        screen_space_y = (screen_space_y + 1.0) / 2.0;
+        let pixel_x = (screen_space_x * self.screen_size.width as f32).round() as i32;
+        let pixel_y = (screen_space_y * self.screen_size.height as f32).round() as i32;
+        return Vec2::new(pixel_x, pixel_y);
+    }
+
+    fn set_screen_space_pixel(&mut self, screen_space_x: f32, screen_space_y: f32, pixel: DeepPixel) {
+        if pixel.depth < 0.0 {
+            return;
+        }
+
+        let pixel_pos = self.screen_space_to_pixel_pos(screen_space_x, screen_space_y);
+        self.set_pixel(pixel_pos.x, pixel_pos.y, pixel);
+    }
+
+    fn set_pixel(&mut self, x: i32, y: i32, pixel: DeepPixel) {
+        if x < 0 || x >= self.screen_size.width ||
+            y < 0 || y >= self.screen_size.height
+        {
+            return;
+        }
+
+        let y = self.screen_size.height - y;
+        let ind = (y * self.screen_size.width + x) as usize;
+        let old = self.buffer[ind];
+        if pixel.depth <= old.depth {
+            self.buffer[ind] = pixel;
         }
     }
 
@@ -68,7 +87,7 @@ impl Camera {
                 let mut projected_p3 = &perspective_mat * &tr.p3;
                 projected_p3.perspective_div();
                 let projected_tr = Triangle::new(projected_p1, projected_p2, projected_p3);
-                draw_screen_triangle_with_lines(buffer, &projected_tr);
+                draw_screen_triangle(buffer, &projected_tr);
             }
         }
     }
@@ -95,50 +114,37 @@ pub fn render(screen_size: ScreenSize, scene: &Scene) -> Vec<Color> {
     };
     let mut buffer = DepthBuffer::new(screen_size, orange);
 
-    let camera: Camera = Camera { fov: 100.0, z_near: 1.0, z_far: 1000.0 };
+    let camera: Camera = Camera { fov: 70.0, z_near: 1.0, z_far: 1000.0 };
     camera.render(&mut buffer, scene);
 
     return buffer.to_bitmap();
 }
 
-fn draw_screen_triangle_with_lines(buffer: &mut DepthBuffer, tr: &Triangle) {
-    let width = buffer.screen_size.width;
-    let height = buffer.screen_size.height;
+fn draw_screen_triangle(buffer: &mut DepthBuffer, tr: &Triangle) {
+    draw_screen_line(buffer, &tr.p1, &tr.p2);
+    draw_screen_line(buffer, &tr.p2, &tr.p3);
+    draw_screen_line(buffer, &tr.p3, &tr.p1);
 
-    let screen_y1 = (((tr.p1.y + 1.0) / 2.0) * height as f32) as i32;
-    let screen_x1 = (((tr.p1.x + 1.0) / 2.0) * width as f32) as i32;
-    let p1 = Vec2::new(screen_x1, screen_y1);
-
-    let screen_y2 = (((tr.p2.y + 1.0) / 2.0) * height as f32) as i32;
-    let screen_x2 = (((tr.p2.x + 1.0) / 2.0) * width as f32) as i32;
-    let p2 = Vec2::new(screen_x2, screen_y2);
-
-    let screen_y3 = (((tr.p3.y + 1.0) / 2.0) * height as f32) as i32;
-    let screen_x3 = (((tr.p3.x + 1.0) / 2.0) * width as f32) as i32;
-    let p3 = Vec2::new(screen_x3, screen_y3);
-
-    draw_screen_line(buffer, &p1, &p2);
-    draw_screen_line(buffer, &p2, &p3);
-    draw_screen_line(buffer, &p3, &p1);
-
-    draw_screen_point(buffer, &p1);
-    draw_screen_point(buffer, &p2);
-    draw_screen_point(buffer, &p3);
+    draw_screen_point(buffer, &tr.p1);
+    draw_screen_point(buffer, &tr.p2);
+    draw_screen_point(buffer, &tr.p3);
 }
 
 fn draw_screen_line<'a>(buffer: &mut DepthBuffer,
-                        mut p1: &'a Vec2<i32>,
-                        mut p2: &'a Vec2<i32>) {
+                        mut p1: &'a Vec4,
+                        mut p2: &'a Vec4) {
     if p1.x > p2.x {
         swap(&mut p1, &mut p2);
     }
-    let dy = p2.y - p1.y;
-    let dx = p2.x - p1.x;
-    if dy >= 0 && dx >= dy {
+    let (p1_pos, p2_pos) =
+        (buffer.screen_space_to_pixel_pos(p1.x, p1.y), buffer.screen_space_to_pixel_pos(p2.x, p2.y));
+    let dy = (p2_pos.y - p1_pos.y) as f32;
+    let dx = (p2_pos.x - p1_pos.x) as f32;
+    if dy >= 0.0 && dx >= dy {
         draw_screen_line_q1(buffer, p1, p2);
-    } else if dy < 0 && dx >= -dy {
+    } else if dy < 0.0 && dx >= -dy {
         draw_screen_line_q4(buffer, p1, p2);
-    } else if dy >= 0 && dx < dy {
+    } else if dy >= 0.0 && dx < dy {
         draw_screen_line_q2(buffer, p1, p2);
     } else {
         draw_screen_line_q3(buffer, p1, p2);
@@ -146,9 +152,9 @@ fn draw_screen_line<'a>(buffer: &mut DepthBuffer,
 }
 
 fn draw_screen_line_q1(buffer: &mut DepthBuffer,
-                       p1: &Vec2<i32>,
-                       p2: &Vec2<i32>) {
-    let pixel = BufferedPixel {
+                       p1: &Vec4,
+                       p2: &Vec4) {
+    let mut pixel = DeepPixel {
         color: Color {
             red: 100,
             green: 0,
@@ -160,25 +166,26 @@ fn draw_screen_line_q1(buffer: &mut DepthBuffer,
 
     let dy = p2.y - p1.y;
     let dx = p2.x - p1.x;
-    let mut p = 2 * dy - dx;
-    let mut x = p1.x;
-    let mut y = p1.y;
-    while x <= p2.x {
-        buffer.set_pixel(x, y, pixel);
-        x += 1;
-        if p < 0 {
-            p += 2 * dy;
-        } else {
-            p += 2 * (dy - dx);
-            y += 1;
-        }
+    let dz = p2.z - p1.z;
+    let (p1_pos, p2_pos) =
+        (buffer.screen_space_to_pixel_pos(p1.x, p1.y), buffer.screen_space_to_pixel_pos(p2.x, p2.y));
+    let pixel_dx = (p2_pos.x - p1_pos.x) as f32;
+    let mut screen_x = p1.x;
+    let mut screen_y = p1.y;
+    let mut screen_z = p1.z;
+    for _x in p1_pos.x..=p2_pos.x {
+        pixel.depth = screen_z;
+        buffer.set_screen_space_pixel(screen_x, screen_y, pixel);
+        screen_x += dx / pixel_dx;
+        screen_y += dy / pixel_dx;
+        screen_z += dz / pixel_dx;
     }
 }
 
 fn draw_screen_line_q2(buffer: &mut DepthBuffer,
-                       p1: &Vec2<i32>,
-                       p2: &Vec2<i32>) {
-    let pixel = BufferedPixel {
+                       p1: &Vec4,
+                       p2: &Vec4) {
+    let mut pixel = DeepPixel {
         color: Color {
             red: 200,
             green: 0,
@@ -190,25 +197,26 @@ fn draw_screen_line_q2(buffer: &mut DepthBuffer,
 
     let dy = p2.y - p1.y;
     let dx = p2.x - p1.x;
-    let mut p = 2 * dx - dy;
-    let mut x = p1.x;
-    let mut y = p1.y;
-    while y <= p2.y {
-        buffer.set_pixel(x, y, pixel);
-        y += 1;
-        if p < 0 {
-            p += 2 * dx;
-        } else {
-            p += 2 * (dx - dy);
-            x += 1;
-        }
+    let dz = p2.z - p1.z;
+    let (p1_pos, p2_pos) =
+        (buffer.screen_space_to_pixel_pos(p1.x, p1.y), buffer.screen_space_to_pixel_pos(p2.x, p2.y));
+    let pixel_dy = (p2_pos.y - p1_pos.y) as f32;
+    let mut screen_x = p1.x;
+    let mut screen_y = p1.y;
+    let mut screen_z = p1.z;
+    for _y in p1_pos.y..=p2_pos.y {
+        pixel.depth = screen_z;
+        buffer.set_screen_space_pixel(screen_x, screen_y, pixel);
+        screen_x += dx / pixel_dy;
+        screen_y += dy / pixel_dy;
+        screen_z += dz / pixel_dy;
     }
 }
 
 fn draw_screen_line_q3(buffer: &mut DepthBuffer,
-                       p1: &Vec2<i32>,
-                       p2: &Vec2<i32>) {
-    let pixel = BufferedPixel {
+                       p1: &Vec4,
+                       p2: &Vec4) {
+    let mut pixel = DeepPixel {
         color: Color {
             red: 0,
             green: 190,
@@ -218,27 +226,28 @@ fn draw_screen_line_q3(buffer: &mut DepthBuffer,
         depth: 0.0,
     };
 
-    let dy = p1.y - p2.y;
+    let dy = p2.y - p1.y;
     let dx = p2.x - p1.x;
-    let mut p = 2 * dx - dy;
-    let mut x = p1.x;
-    let mut y = p1.y;
-    while y >= p2.y {
-        buffer.set_pixel(x, y, pixel);
-        y -= 1;
-        if p < 0 {
-            p += 2 * dx;
-        } else {
-            p += 2 * (dx - dy);
-            x += 1;
-        }
+    let dz = p2.z - p1.z;
+    let (p1_pos, p2_pos) =
+        (buffer.screen_space_to_pixel_pos(p1.x, p1.y), buffer.screen_space_to_pixel_pos(p2.x, p2.y));
+    let pixel_dy = (p1_pos.y - p2_pos.y) as f32;
+    let mut screen_x = p1.x;
+    let mut screen_y = p1.y;
+    let mut screen_z = p1.z;
+    for _y in p2_pos.y..=p1_pos.y {
+        pixel.depth = screen_z;
+        buffer.set_screen_space_pixel(screen_x, screen_y, pixel);
+        screen_x += dx / pixel_dy;
+        screen_y += dy / pixel_dy;
+        screen_z += dz / pixel_dy;
     }
 }
 
 fn draw_screen_line_q4(buffer: &mut DepthBuffer,
-                       p1: &Vec2<i32>,
-                       p2: &Vec2<i32>) {
-    let pixel = BufferedPixel {
+                       p1: &Vec4,
+                       p2: &Vec4) {
+    let mut pixel = DeepPixel {
         color: Color {
             red: 0,
             green: 100,
@@ -248,43 +257,45 @@ fn draw_screen_line_q4(buffer: &mut DepthBuffer,
         depth: 0.0,
     };
 
-    let dy = p1.y - p2.y;
+    let dy = p2.y - p1.y;
     let dx = p2.x - p1.x;
-    let mut p = 2 * dy - dx;
-    let mut x = p1.x;
-    let mut y = p1.y;
-    while x <= p2.x {
-        buffer.set_pixel(x, y, pixel);
-        x += 1;
-        if p < 0 {
-            p += 2 * dy;
-        } else {
-            p += 2 * (dy - dx);
-            y -= 1;
-        }
+    let dz = p2.z - p1.z;
+    let (p1_pos, p2_pos) =
+        (buffer.screen_space_to_pixel_pos(p1.x, p1.y), buffer.screen_space_to_pixel_pos(p2.x, p2.y));
+    let pixel_dx = (p2_pos.x - p1_pos.x) as f32;
+    let mut screen_x = p1.x;
+    let mut screen_y = p1.y;
+    let mut screen_z = p1.z;
+    for _x in p1_pos.x..=p2_pos.x {
+        pixel.depth = screen_z;
+        buffer.set_screen_space_pixel(screen_x, screen_y, pixel);
+        screen_x += dx / pixel_dx;
+        screen_y += dy / pixel_dx;
+        screen_z += dz / pixel_dx;
     }
 }
 
 fn draw_screen_point(buffer: &mut DepthBuffer,
-                     p: &Vec2<i32>) {
-    let pixel = BufferedPixel {
+                     p: &Vec4) {
+    let pixel = DeepPixel {
         color: Color {
             red: 100,
             green: 100,
             blue: 100,
             alpha: 0,
         },
-        depth: 0.0,
+        depth: p.z,
     };
 
+    let pixel_pos = buffer.screen_space_to_pixel_pos(p.x, p.y);
     let point_radius = 3;
-    let left = max(0, p.x - point_radius);
-    let right = min(buffer.screen_size.width as i32, p.x + point_radius);
-    let top = max(0, p.y - point_radius);
-    let bot = min(buffer.screen_size.height as i32, p.y + point_radius);
+    let left = max(0, pixel_pos.x as i32 - point_radius);
+    let right = min(buffer.screen_size.width, pixel_pos.x + point_radius);
+    let bot = max(0, pixel_pos.y as i32 - point_radius);
+    let top = min(buffer.screen_size.height, pixel_pos.y + point_radius);
 
     for screen_x in left..=right {
-        for screen_y in top..=bot {
+        for screen_y in bot..=top {
             buffer.set_pixel(screen_x, screen_y, pixel);
         }
     }
