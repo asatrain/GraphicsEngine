@@ -1,4 +1,4 @@
-use std::ops::Mul;
+use std::ops::{Mul, MulAssign};
 
 #[derive(Debug)]
 pub struct Vec2<T> {
@@ -69,9 +69,25 @@ impl Vec4 {
     }
 }
 
+impl Mat4x4 {
+    pub fn translation(offset: &Vec4) -> Mat4x4 {
+        let mut res = Mat4x4::default();
+        res.content[0][0] = 1.0;
+        res.content[1][1] = 1.0;
+        res.content[2][2] = 1.0;
+        res.content[3][3] = 1.0;
+
+        res.content[0][3] = offset.x;
+        res.content[1][3] = offset.y;
+        res.content[2][3] = offset.z;
+
+        return res;
+    }
+}
+
 impl Default for Vec4 {
     fn default() -> Self {
-        Vec4::new(0.0, 0.0, 0.0, 0.0)
+        Vec4::new(0.0, 0.0, 0.0, 1.0)
     }
 }
 
@@ -89,10 +105,10 @@ impl Default for Mat4x4 {
     }
 }
 
-impl Mul for Mat4x4 {
+impl Mul<&Mat4x4> for &Mat4x4 {
     type Output = Mat4x4;
 
-    fn mul(self, rhs: Self) -> Self::Output {
+    fn mul(self, rhs: &Mat4x4) -> Self::Output {
         let mut res = Mat4x4::default();
         for target_i in 0..4 {
             for target_j in 0..4 {
@@ -119,8 +135,24 @@ impl Mul<&Vec4> for &Mat4x4 {
     }
 }
 
+impl MulAssign<f32> for &mut Vec4 {
+    fn mul_assign(&mut self, rhs: f32) {
+        self.x *= rhs;
+        self.y *= rhs;
+        self.z *= rhs;
+    }
+}
+
 impl Triangle {
     pub const fn new(p1: Vec4, p2: Vec4, p3: Vec4) -> Triangle {
         Triangle { p1, p2, p3 }
+    }
+}
+
+impl MulAssign<&Mat4x4> for &mut Triangle {
+    fn mul_assign(&mut self, rhs: &Mat4x4) {
+        self.p1 = rhs * &self.p1;
+        self.p2 = rhs * &self.p2;
+        self.p3 = rhs * &self.p3;
     }
 }

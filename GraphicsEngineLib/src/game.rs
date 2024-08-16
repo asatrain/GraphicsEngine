@@ -1,4 +1,5 @@
-use crate::math::{Mesh, Triangle, Vec4};
+use crate::math::{Mat4x4, Mesh, Triangle, Vec4};
+use crate::UserInput;
 
 pub struct Scene {
     pub meshes: Vec<Mesh>,
@@ -81,11 +82,28 @@ impl Scene {
     }
 }
 
-pub fn update_scene(scene: &mut Scene, delta_time: f32) {
-    let offset = -0.005 * delta_time;
-    for tr in scene.meshes[0].triangles.iter_mut() {
-        tr.p1.x += offset;
-        tr.p2.x += offset;
-        tr.p3.x += offset;
+
+pub fn update_scene(scene: &mut Scene, user_input: &UserInput, delta_time: f32) {
+    let mut offset = &mut movement_dir(user_input);
+    offset *= 0.1f32 * delta_time;
+    let translation = Mat4x4::translation(&offset);
+    for mut tr in scene.meshes[0].triangles.iter_mut() {
+        tr *= &translation;
     }
+}
+
+fn movement_dir(user_input: &UserInput) -> Vec4 {
+    let mut dir = Vec4::default();
+    if user_input.w_pressed && !user_input.s_pressed {
+        dir.z = 1.0;
+    } else if !user_input.w_pressed && user_input.s_pressed {
+        dir.z = -1.0;
+    }
+
+    if user_input.d_pressed && !user_input.a_pressed {
+        dir.x = 1.0;
+    } else if !user_input.d_pressed && user_input.a_pressed {
+        dir.x = -1.0;
+    }
+    return dir;
 }

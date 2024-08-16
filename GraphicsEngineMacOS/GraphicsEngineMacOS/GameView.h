@@ -12,7 +12,7 @@
 
 @property NSTimer *gameLoopTimer;
 @property uint64_t prevTimeNs;
-@property Color* buffer;
+@property Color* bitmap;
 
 - (void)startLoop;
 
