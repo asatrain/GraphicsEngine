@@ -10,6 +10,9 @@ typedef struct {
     bool a_pressed;
     bool s_pressed;
     bool d_pressed;
+    bool q_pressed;
+    bool e_pressed;
+    bool shift_pressed;
 } UserInput;
 
 extern void create_scene(void);

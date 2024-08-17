@@ -14,6 +14,9 @@ pub struct UserInput {
     a_pressed: bool,
     s_pressed: bool,
     d_pressed: bool,
+    q_pressed: bool,
+    e_pressed: bool,
+    shift_pressed: bool,
 }
 
 #[repr(C)]
@@ -67,11 +70,16 @@ mod tests {
     fn test() {
         let input = UserInput {
             w_pressed: false,
-            a_pressed: true,
-            s_pressed: false,
+            a_pressed: false,
+            s_pressed: true,
             d_pressed: false,
+            q_pressed: false,
+            e_pressed: false,
+            shift_pressed: false,
         };
         create_scene();
-        update_and_render(1920, 1080, input, 2.5);
+        for _ in 0..100 {
+            update_and_render(1920, 1080, input, 0.5);
+        }
     }
 }

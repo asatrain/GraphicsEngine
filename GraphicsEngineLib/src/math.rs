@@ -1,4 +1,4 @@
-use std::ops::{Mul, MulAssign};
+use std::ops::{AddAssign, Mul, MulAssign, Neg};
 
 #[derive(Debug)]
 pub struct Vec2<T> {
@@ -13,7 +13,7 @@ pub struct Vec3 {
     pub z: f32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Vec4 {
     pub x: f32,
     pub y: f32,
@@ -29,6 +29,7 @@ pub struct Mat4x4 {
     pub content: [[f32; 4]; 4],
 }
 
+#[derive(Clone)]
 pub struct Triangle {
     pub p1: Vec4,
     pub p2: Vec4,
@@ -69,8 +70,27 @@ impl Vec4 {
     }
 }
 
+impl Mat3x3 {
+    pub fn rotation(rotation: &Vec3) -> Mat3x3 {
+        let (x, y, z) = (rotation.x.to_radians(), rotation.y.to_radians(), rotation.z.to_radians());
+        let mut res = Mat3x3::default();
+
+        res.content[0][0] = y.cos() * z.cos();
+        res.content[0][1] = x.sin() * y.sin() * z.cos() - x.cos() * z.sin();
+        res.content[0][2] = x.cos() * y.sin() * z.cos() + x.sin() * z.sin();
+        res.content[1][0] = y.cos() * z.sin();
+        res.content[1][1] = x.sin() * y.sin() * z.sin() + x.cos() * z.cos();
+        res.content[1][2] = x.cos() * y.sin() * z.sin() - x.sin() * z.cos();
+        res.content[2][0] = -y.sin();
+        res.content[2][1] = x.sin() * y.cos();
+        res.content[2][2] = x.cos() * y.cos();
+
+        return res;
+    }
+}
+
 impl Mat4x4 {
-    pub fn translation(offset: &Vec4) -> Mat4x4 {
+    pub fn translation(offset: &Vec3) -> Mat4x4 {
         let mut res = Mat4x4::default();
         res.content[0][0] = 1.0;
         res.content[1][1] = 1.0;
@@ -83,11 +103,49 @@ impl Mat4x4 {
 
         return res;
     }
+
+    pub fn rotation(rotation: &Vec3) -> Mat4x4 {
+        let (x, y, z) = (rotation.x.to_radians(), rotation.y.to_radians(), rotation.z.to_radians());
+        let mut res = Mat4x4::default();
+
+        res.content[0][0] = y.cos() * z.cos();
+        res.content[0][1] = x.sin() * y.sin() * z.cos() - x.cos() * z.sin();
+        res.content[0][2] = x.cos() * y.sin() * z.cos() + x.sin() * z.sin();
+        res.content[1][0] = y.cos() * z.sin();
+        res.content[1][1] = x.sin() * y.sin() * z.sin() + x.cos() * z.cos();
+        res.content[1][2] = x.cos() * y.sin() * z.sin() - x.sin() * z.cos();
+        res.content[2][0] = -y.sin();
+        res.content[2][1] = x.sin() * y.cos();
+        res.content[2][2] = x.cos() * y.cos();
+
+        res.content[3][3] = 1.0;
+
+        return res;
+    }
+}
+
+impl Default for Vec3 {
+    fn default() -> Self {
+        Vec3::new(0.0, 0.0, 0.0)
+    }
 }
 
 impl Default for Vec4 {
     fn default() -> Self {
         Vec4::new(0.0, 0.0, 0.0, 1.0)
+    }
+}
+
+impl Default for Mat3x3 {
+    fn default() -> Self {
+        Self {
+            content:
+            [
+                [0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+            ]
+        }
     }
 }
 
@@ -121,6 +179,19 @@ impl Mul<&Mat4x4> for &Mat4x4 {
     }
 }
 
+impl Mul<&Vec3> for &Mat3x3 {
+    type Output = Vec3;
+
+    fn mul(self, rhs: &Vec3) -> Self::Output {
+        let mut res = Vec3::default();
+        let content = self.content;
+        res.x = content[0][0] * rhs.x + content[0][1] * rhs.y + content[0][2] * rhs.z;
+        res.y = content[1][0] * rhs.x + content[1][1] * rhs.y + content[1][2] * rhs.z;
+        res.z = content[2][0] * rhs.x + content[2][1] * rhs.y + content[2][2] * rhs.z;
+        return res;
+    }
+}
+
 impl Mul<&Vec4> for &Mat4x4 {
     type Output = Vec4;
 
@@ -135,7 +206,25 @@ impl Mul<&Vec4> for &Mat4x4 {
     }
 }
 
+impl Mul<&Triangle> for &Mat4x4 {
+    type Output = Triangle;
+
+    fn mul(self, rhs: &Triangle) -> Self::Output {
+        let mut res = rhs.clone();
+        res *= self;
+        return res;
+    }
+}
+
 impl MulAssign<f32> for &mut Vec4 {
+    fn mul_assign(&mut self, rhs: f32) {
+        self.x *= rhs;
+        self.y *= rhs;
+        self.z *= rhs;
+    }
+}
+
+impl MulAssign<f32> for Vec3 {
     fn mul_assign(&mut self, rhs: f32) {
         self.x *= rhs;
         self.y *= rhs;
@@ -149,10 +238,32 @@ impl Triangle {
     }
 }
 
-impl MulAssign<&Mat4x4> for &mut Triangle {
+impl MulAssign<&Mat4x4> for Triangle {
     fn mul_assign(&mut self, rhs: &Mat4x4) {
         self.p1 = rhs * &self.p1;
         self.p2 = rhs * &self.p2;
         self.p3 = rhs * &self.p3;
+    }
+}
+
+impl MulAssign<&Mat3x3> for Vec3 {
+    fn mul_assign(&mut self, rhs: &Mat3x3) {
+        *self = rhs * self;
+    }
+}
+
+impl AddAssign<&Vec3> for &mut Vec3 {
+    fn add_assign(&mut self, rhs: &Vec3) {
+        self.x += rhs.x;
+        self.y += rhs.y;
+        self.z += rhs.z;
+    }
+}
+
+impl Neg for &Vec3 {
+    type Output = Vec3;
+
+    fn neg(self) -> Self::Output {
+        Vec3::new(-self.x, -self.y, -self.z)
     }
 }

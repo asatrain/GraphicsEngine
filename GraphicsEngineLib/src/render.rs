@@ -2,7 +2,7 @@ use std::cmp::{max, min};
 use std::mem::swap;
 
 use crate::game::Scene;
-use crate::math::{Mat4x4, Triangle, Vec2, Vec4};
+use crate::math::{Mat4x4, Triangle, Vec2, Vec3, Vec4};
 use crate::Color;
 
 pub struct ScreenSize {
@@ -21,10 +21,12 @@ struct DepthBuffer {
     screen_size: ScreenSize,
 }
 
-struct Camera {
-    fov: f32,
-    z_near: f32,
-    z_far: f32,
+pub struct Camera {
+    pub fov: f32,
+    pub z_near: f32,
+    pub z_far: f32,
+    pub position: Vec3,
+    pub rotation: Vec3,
 }
 
 impl DepthBuffer {
@@ -60,7 +62,7 @@ impl DepthBuffer {
             return;
         }
 
-        let y = self.screen_size.height - y;
+        let y = self.screen_size.height - 1 - y;
         let ind = (y * self.screen_size.width + x) as usize;
         let old = self.buffer[ind];
         if pixel.depth <= old.depth {
@@ -78,8 +80,16 @@ impl Camera {
         let screen_size = &buffer.screen_size;
         let aspect_ratio = screen_size.width as f32 / screen_size.height as f32;
         let perspective_mat = self.perspective_mat(aspect_ratio);
-        for mesh in &scene.meshes {
-            for tr in &mesh.triangles {
+        for object in &scene.objects {
+            for tr in &object.mesh.triangles {
+                let mut tr = &Mat4x4::rotation(&object.rotation) * tr;
+                tr *= &Mat4x4::translation(&object.position);
+
+                let camera_negative_pos = -&scene.camera.position;
+                tr *= &Mat4x4::translation(&camera_negative_pos);
+                let camera_negative_rotation = -&scene.camera.rotation;
+                tr *= &Mat4x4::rotation(&camera_negative_rotation);
+
                 let mut projected_p1 = &perspective_mat * &tr.p1;
                 projected_p1.perspective_div();
                 let mut projected_p2 = &perspective_mat * &tr.p2;
@@ -99,7 +109,7 @@ impl Camera {
         res.content[0][0] = 1.0 / (tan_half_fov * aspect_ratio);
         res.content[1][1] = 1.0 / (tan_half_fov);
         res.content[2][2] = self.z_far / (self.z_far - self.z_near);
-        res.content[2][3] = -(self.z_far * self.z_near) / (self.z_far - self.z_near);
+        res.content[2][3] = -self.z_far * self.z_near / (self.z_far - self.z_near);
         res.content[3][2] = 1.0;
         return res;
     }
@@ -113,9 +123,7 @@ pub fn render(screen_size: ScreenSize, scene: &Scene) -> Vec<Color> {
         alpha: 0,
     };
     let mut buffer = DepthBuffer::new(screen_size, orange);
-
-    let camera: Camera = Camera { fov: 70.0, z_near: 1.0, z_far: 1000.0 };
-    camera.render(&mut buffer, scene);
+    scene.camera.render(&mut buffer, scene);
 
     return buffer.to_bitmap();
 }
