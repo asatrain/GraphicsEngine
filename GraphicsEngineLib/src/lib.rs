@@ -71,7 +71,7 @@ mod tests {
         let input = UserInput {
             w_pressed: false,
             a_pressed: false,
-            s_pressed: true,
+            s_pressed: false,
             d_pressed: false,
             q_pressed: false,
             e_pressed: false,

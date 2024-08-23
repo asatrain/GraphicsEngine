@@ -1,4 +1,4 @@
-use std::ops::{AddAssign, Mul, MulAssign, Neg};
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub};
 
 #[derive(Debug)]
 pub struct Vec2<T> {
@@ -36,6 +36,12 @@ pub struct Triangle {
     pub p3: Vec4,
 }
 
+pub trait Plane {
+    fn new_plane(point: Vec4, normal: Vec4) -> Self;
+    fn is_point_inside(&self, point: &Vec4) -> bool;
+    fn intersect_with_segment(&self, p1: &Vec4, p2: &Vec4) -> Vec4;
+}
+
 pub struct Mesh {
     pub triangles: Vec<Triangle>,
 }
@@ -67,6 +73,10 @@ impl Vec4 {
             self.y /= self.w;
             self.z /= self.w;
         }
+    }
+
+    pub fn dot(&self, rhs: &Vec4) -> f32 {
+        self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
     }
 }
 
@@ -104,6 +114,9 @@ impl Mat4x4 {
         return res;
     }
 
+    // cosycosz sinxsinycosz−cosxsinz cosxsinycosz+sinxsinz
+    // cosysinz sinxsinysinz+cosxcosz cosxsinysinz−sinxcosz
+    // −siny sinxcosy cosxcosy
     pub fn rotation(rotation: &Vec3) -> Mat4x4 {
         let (x, y, z) = (rotation.x.to_radians(), rotation.y.to_radians(), rotation.z.to_radians());
         let mut res = Mat4x4::default();
@@ -216,11 +229,39 @@ impl Mul<&Triangle> for &Mat4x4 {
     }
 }
 
+impl Mul<f32> for &Vec4 {
+    type Output = Vec4;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        let mut res = self.clone();
+        res.x *= rhs;
+        res.y *= rhs;
+        res.z *= rhs;
+        return res;
+    }
+}
+
 impl MulAssign<f32> for &mut Vec4 {
     fn mul_assign(&mut self, rhs: f32) {
         self.x *= rhs;
         self.y *= rhs;
         self.z *= rhs;
+    }
+}
+
+impl Add<&Vec4> for &Vec4 {
+    type Output = Vec4;
+
+    fn add(self, rhs: &Vec4) -> Self::Output {
+        Vec4::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z, self.w)
+    }
+}
+
+impl Sub<&Vec4> for &Vec4 {
+    type Output = Vec4;
+
+    fn sub(self, rhs: &Vec4) -> Self::Output {
+        Vec4::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z, self.w)
     }
 }
 
@@ -246,6 +287,12 @@ impl MulAssign<&Mat4x4> for Triangle {
     }
 }
 
+impl Default for Triangle {
+    fn default() -> Self {
+        Self::new(Vec4::default(), Vec4::default(), Vec4::default())
+    }
+}
+
 impl MulAssign<&Mat3x3> for Vec3 {
     fn mul_assign(&mut self, rhs: &Mat3x3) {
         *self = rhs * self;
@@ -265,5 +312,21 @@ impl Neg for &Vec3 {
 
     fn neg(self) -> Self::Output {
         Vec3::new(-self.x, -self.y, -self.z)
+    }
+}
+
+impl Plane for Vec4 {
+    fn new_plane(point: Vec4, mut normal: Vec4) -> Self {
+        normal.w = -point.dot(&normal);
+        return normal;
+    }
+
+    fn is_point_inside(&self, point: &Vec4) -> bool {
+        self.dot(point) + self.w >= 0.0
+    }
+
+    fn intersect_with_segment(&self, p1: &Vec4, p2: &Vec4) -> Vec4 {
+        let t = (-self.w - self.dot(p1)) / self.dot(&(p2 - p1));
+        return p1 + &(&(p2 - p1) * t);
     }
 }

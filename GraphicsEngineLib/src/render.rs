@@ -1,9 +1,30 @@
 use std::cmp::{max, min};
 use std::mem::swap;
 
-use crate::game::Scene;
-use crate::math::{Mat4x4, Triangle, Vec2, Vec3, Vec4};
 use crate::Color;
+use crate::game::Scene;
+use crate::math::{Mat4x4, Plane, Triangle, Vec2, Vec3, Vec4};
+
+static BACKGROUND_COLOR: Color = Color {
+    red: 200,
+    green: 50,
+    blue: 0,
+    alpha: 0,
+};
+
+static WIREFRAME_LINE_COLOR: Color = Color {
+    red: 200,
+    green: 200,
+    blue: 200,
+    alpha: 0,
+};
+
+static WIREFRAME_POINT_COLOR: Color = Color {
+    red: 50,
+    green: 50,
+    blue: 50,
+    alpha: 0,
+};
 
 pub struct ScreenSize {
     pub width: i32,
@@ -22,7 +43,7 @@ struct DepthBuffer {
 }
 
 pub struct Camera {
-    pub fov: f32,
+    pub vertical_fov: f32,
     pub z_near: f32,
     pub z_far: f32,
     pub position: Vec3,
@@ -71,7 +92,7 @@ impl DepthBuffer {
     }
 
     fn to_bitmap(&self) -> Vec<Color> {
-        self.buffer.iter().map(|bp| bp.color).collect()
+        self.buffer.iter().map(|dp| dp.color).collect()
     }
 }
 
@@ -80,6 +101,7 @@ impl Camera {
         let screen_size = &buffer.screen_size;
         let aspect_ratio = screen_size.width as f32 / screen_size.height as f32;
         let perspective_mat = self.perspective_mat(aspect_ratio);
+        let mut triangles = vec![];
         for object in &scene.objects {
             for tr in &object.mesh.triangles {
                 let mut tr = &Mat4x4::rotation(&object.rotation) * tr;
@@ -90,24 +112,49 @@ impl Camera {
                 let camera_negative_rotation = -&scene.camera.rotation;
                 tr *= &Mat4x4::rotation(&camera_negative_rotation);
 
-                let mut projected_p1 = &perspective_mat * &tr.p1;
-                projected_p1.perspective_div();
-                let mut projected_p2 = &perspective_mat * &tr.p2;
-                projected_p2.perspective_div();
-                let mut projected_p3 = &perspective_mat * &tr.p3;
-                projected_p3.perspective_div();
-                let projected_tr = Triangle::new(projected_p1, projected_p2, projected_p3);
-                draw_screen_triangle(buffer, &projected_tr);
+                triangles.push(tr);
             }
+        }
+
+        let z_near_plane = Vec4::new_plane(Vec4::new3d(0.0, 0.0, self.z_near), Vec4::new3d(0.0, 0.0, 1.0));
+        triangles = clip_triangles(triangles, &z_near_plane);
+        let z_far_plane = Vec4::new_plane(Vec4::new3d(0.0, 0.0, self.z_far), Vec4::new3d(0.0, 0.0, -1.0));
+        triangles = clip_triangles(triangles, &z_far_plane);
+
+        let half_horizontal_fov = ((self.vertical_fov / 2.0).to_radians().tan() * aspect_ratio).atan().to_degrees();
+        let hor_normal_rotation_angle = 90.0 - half_horizontal_fov;
+        let ver_normal_rotation_angle = 90.0 - self.vertical_fov / 2.0;
+
+        let normal = &Mat4x4::rotation(&Vec3::new(0.0, hor_normal_rotation_angle, 0.0)) * &Vec4::new3d(0.0, 0.0, 1.0);
+        let left_plane = Vec4::new_plane(Vec4::new3d(0.0, 0.0, 0.0), normal);
+        triangles = clip_triangles(triangles, &left_plane);
+        let normal = &Mat4x4::rotation(&Vec3::new(0.0, -hor_normal_rotation_angle, 0.0)) * &Vec4::new3d(0.0, 0.0, 1.0);
+        let right_plane = Vec4::new_plane(Vec4::new3d(0.0, 0.0, 0.0), normal);
+        triangles = clip_triangles(triangles, &right_plane);
+        let normal = &Mat4x4::rotation(&Vec3::new(-ver_normal_rotation_angle, 0.0, 0.0)) * &Vec4::new3d(0.0, 0.0, 1.0);
+        let bot_plane = Vec4::new_plane(Vec4::new3d(0.0, 0.0, 0.0), normal);
+        triangles = clip_triangles(triangles, &bot_plane);
+        let normal = &Mat4x4::rotation(&Vec3::new(ver_normal_rotation_angle, 0.0, 0.0)) * &Vec4::new3d(0.0, 0.0, 1.0);
+        let top_plane = Vec4::new_plane(Vec4::new3d(0.0, 0.0, 0.0), normal);
+        triangles = clip_triangles(triangles, &top_plane);
+
+        for tr in triangles {
+            let mut projected_p1 = &perspective_mat * &tr.p1;
+            projected_p1.perspective_div();
+            let mut projected_p2 = &perspective_mat * &tr.p2;
+            projected_p2.perspective_div();
+            let mut projected_p3 = &perspective_mat * &tr.p3;
+            projected_p3.perspective_div();
+            let projected_tr = Triangle::new(projected_p1, projected_p2, projected_p3);
+            draw_screen_triangle(buffer, &projected_tr);
         }
     }
 
     fn perspective_mat(&self, aspect_ratio: f32) -> Mat4x4 {
         let mut res = Mat4x4::default();
-        let half_fov = self.fov.to_radians() / 2.0;
-        let tan_half_fov = half_fov.tan();
-        res.content[0][0] = 1.0 / (tan_half_fov * aspect_ratio);
-        res.content[1][1] = 1.0 / (tan_half_fov);
+        let half_vertical_fov = self.vertical_fov.to_radians() / 2.0;
+        res.content[0][0] = 1.0 / (half_vertical_fov.tan() * aspect_ratio);
+        res.content[1][1] = 1.0 / (half_vertical_fov.tan());
         res.content[2][2] = self.z_far / (self.z_far - self.z_near);
         res.content[2][3] = -self.z_far * self.z_near / (self.z_far - self.z_near);
         res.content[3][2] = 1.0;
@@ -116,16 +163,58 @@ impl Camera {
 }
 
 pub fn render(screen_size: ScreenSize, scene: &Scene) -> Vec<Color> {
-    let orange = Color {
-        red: 200,
-        green: 100,
-        blue: 0,
-        alpha: 0,
-    };
-    let mut buffer = DepthBuffer::new(screen_size, orange);
+    let mut buffer = DepthBuffer::new(screen_size, BACKGROUND_COLOR);
     scene.camera.render(&mut buffer, scene);
 
     return buffer.to_bitmap();
+}
+
+fn clip_triangles(triangles: Vec<Triangle>, plane: &impl Plane) -> Vec<Triangle> {
+    let mut clipped = vec![];
+    for tr in triangles {
+        let mut res1 = None;
+        let mut res2 = None;
+        clip_triangle(tr, plane, &mut res1, &mut res2);
+        if let Some(tr1) = res1 {
+            clipped.push(tr1);
+            if let Some(tr2) = res2 {
+                clipped.push(tr2);
+            }
+        }
+    }
+    return clipped;
+}
+
+fn clip_triangle(triangle: Triangle, plane: &impl Plane,
+                 res1: &mut Option<Triangle>, res2: &mut Option<Triangle>) {
+    let mut inside_count = 0;
+    let mut outside_count = 0;
+    let mut inside_points = [&triangle.p1; 3];
+    let mut outside_points = [&triangle.p1; 3];
+    for point in [&triangle.p1, &triangle.p2, &triangle.p3] {
+        if plane.is_point_inside(&point) {
+            inside_points[inside_count] = point;
+            inside_count += 1;
+        } else {
+            outside_points[outside_count] = point;
+            outside_count += 1;
+        }
+    }
+
+    if inside_count == 0 {
+        return;
+    } else if inside_count == 3 {
+        *res1 = Some(triangle);
+    } else if inside_count == 1 {
+        let intersection1 = plane.intersect_with_segment(&inside_points[0], &outside_points[0]);
+        let intersection2 = plane.intersect_with_segment(&inside_points[0], &outside_points[1]);
+        *res1 = Some(Triangle::new(inside_points[0].clone(), intersection1, intersection2));
+    } else { // if inside_points == 2
+        let intersection1 = plane.intersect_with_segment(&inside_points[0], &outside_points[0]);
+        let intersection2 = plane.intersect_with_segment(&inside_points[1], &outside_points[0]);
+        *res1 = Some(Triangle::new(inside_points[0].clone(), inside_points[1].clone(), intersection1.clone()));
+        *res2 = Some(Triangle::new(inside_points[1].clone(), intersection2, intersection1));
+    }
 }
 
 fn draw_screen_triangle(buffer: &mut DepthBuffer, tr: &Triangle) {
@@ -163,12 +252,13 @@ fn draw_screen_line_q1(buffer: &mut DepthBuffer,
                        p1: &Vec4,
                        p2: &Vec4) {
     let mut pixel = DeepPixel {
-        color: Color {
-            red: 100,
-            green: 0,
-            blue: 0,
-            alpha: 0,
-        },
+        color: WIREFRAME_LINE_COLOR,
+        // Color {
+        //     red: 100,
+        //     green: 0,
+        //     blue: 0,
+        //     alpha: 0,
+        // },
         depth: 0.0,
     };
 
@@ -194,12 +284,13 @@ fn draw_screen_line_q2(buffer: &mut DepthBuffer,
                        p1: &Vec4,
                        p2: &Vec4) {
     let mut pixel = DeepPixel {
-        color: Color {
-            red: 200,
-            green: 0,
-            blue: 200,
-            alpha: 0,
-        },
+        color: WIREFRAME_LINE_COLOR,
+        // Color {
+        //     red: 200,
+        //     green: 0,
+        //     blue: 200,
+        //     alpha: 0,
+        // },
         depth: 0.0,
     };
 
@@ -225,12 +316,13 @@ fn draw_screen_line_q3(buffer: &mut DepthBuffer,
                        p1: &Vec4,
                        p2: &Vec4) {
     let mut pixel = DeepPixel {
-        color: Color {
-            red: 0,
-            green: 190,
-            blue: 255,
-            alpha: 0,
-        },
+        color: WIREFRAME_LINE_COLOR,
+        // Color {
+        //     red: 0,
+        //     green: 190,
+        //     blue: 255,
+        //     alpha: 0,
+        // },
         depth: 0.0,
     };
 
@@ -256,12 +348,13 @@ fn draw_screen_line_q4(buffer: &mut DepthBuffer,
                        p1: &Vec4,
                        p2: &Vec4) {
     let mut pixel = DeepPixel {
-        color: Color {
-            red: 0,
-            green: 100,
-            blue: 0,
-            alpha: 0,
-        },
+        color: WIREFRAME_LINE_COLOR,
+        // Color {
+        //     red: 0,
+        //     green: 100,
+        //     blue: 0,
+        //     alpha: 0,
+        // },
         depth: 0.0,
     };
 
@@ -286,13 +379,14 @@ fn draw_screen_line_q4(buffer: &mut DepthBuffer,
 fn draw_screen_point(buffer: &mut DepthBuffer,
                      p: &Vec4) {
     let pixel = DeepPixel {
-        color: Color {
-            red: 100,
-            green: 100,
-            blue: 100,
-            alpha: 0,
-        },
-        depth: p.z,
+        color: WIREFRAME_POINT_COLOR,
+        // Color {
+        //     red: 100,
+        //     green: 100,
+        //     blue: 100,
+        //     alpha: 0,
+        // },
+        depth: p.z - 0.0001,
     };
 
     let pixel_pos = buffer.screen_space_to_pixel_pos(p.x, p.y);

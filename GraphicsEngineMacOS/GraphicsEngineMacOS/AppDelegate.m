@@ -25,6 +25,7 @@
     
     GameView* gameView = [[GameView alloc] init];
     [self.window setContentView:gameView];
+    [self.window makeFirstResponder:gameView];
     [gameView startLoop];
 }
 

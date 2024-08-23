@@ -15,11 +15,11 @@ pub struct Scene {
 
 impl Scene {
     pub fn new() -> Scene {
-        let mut scene = Scene {
+        let scene = Scene {
             camera: Camera {
-                fov: 70.0,
-                z_near: 1.0,
-                z_far: 1000.0,
+                vertical_fov: 60.0,
+                z_near: 0.5,
+                z_far: 3.0,
                 position: Vec3::default(),
                 rotation: Vec3::default(),
             },
@@ -70,16 +70,10 @@ impl Scene {
                                       Vec4::new3d(0.5, -0.5, 1.5)),
                     ]
                 },
-                position: Vec3::default(),
+                position: Vec3::new(0.0, 0.0, -1.0),
                 rotation: Vec3::default(),
             }],
         };
-        for tr in scene.objects[0].mesh.triangles.iter_mut() {
-            tr.p1.z -= 2.0;
-            tr.p2.z -= 2.0;
-            tr.p3.z -= 2.0;
-        }
-        scene.objects[0].position = Vec3::new(0.0, 0.0, 5.0);
         scene
         // Scene {
         //     meshes: [Mesh {
@@ -108,14 +102,14 @@ pub fn update_scene(scene: &mut Scene, user_input: &UserInput, delta_time: f32) 
 }
 
 fn update_object(scene: &mut Scene, delta_time: f32) {
-    let mut offset = Vec3::new(0.0, 0.0, 1.0);
-    offset *= 0.5 * delta_time;
-    let mut pos = &mut scene.objects[0].position;
-    pos += &offset;
+    // let mut offset = Vec3::new(0.0, 0.0, 1.0);
+    // offset *= 0.5 * delta_time;
+    // let mut pos = &mut scene.objects[0].position;
+    // pos += &offset;
 
-    let rotation_offset = 90.0 * delta_time;
-    let mut rotation = &mut scene.objects[0].rotation;
-    rotation += &Vec3::new(rotation_offset, rotation_offset, rotation_offset);
+    // let rotation_offset = 45.0 * delta_time;
+    // let mut rotation = &mut scene.objects[0].rotation;
+    // rotation += &Vec3::new(0.0, 0.0, rotation_offset);
 }
 
 fn update_camera(scene: &mut Scene, user_input: &UserInput, delta_time: f32) {
@@ -124,11 +118,11 @@ fn update_camera(scene: &mut Scene, user_input: &UserInput, delta_time: f32) {
 
     let mut camera_offset = camera_movement_dir(user_input);
     camera_offset *= &Mat3x3::rotation(camera_rotation);
-    camera_offset *= 1.5 * delta_time;
+    camera_offset *= 0.5 * delta_time;
     camera_pos += &camera_offset;
 
     let mut camera_rotation_offset = camera_rotation_dir(user_input);
-    camera_rotation_offset *= 30.0 * delta_time;
+    camera_rotation_offset *= 15.0 * delta_time;
     camera_rotation += &camera_rotation_offset;
 }
 
@@ -155,7 +149,7 @@ fn camera_rotation_dir(user_input: &UserInput) -> Vec3 {
     }
 
     if user_input.shift_pressed {
-        dir *= 2.5;
+        dir *= 5.0;
     }
     return dir;
 }
