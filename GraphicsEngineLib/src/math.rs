@@ -1,3 +1,4 @@
+use std::mem::swap;
 use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub};
 
 #[derive(Debug)]
@@ -77,6 +78,20 @@ impl Vec4 {
 
     pub fn dot(&self, rhs: &Vec4) -> f32 {
         self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
+    }
+
+    // pub fn len_2d(&self) -> f32 {
+    //     (self.x.powi(2) + self.y.powi(2)).sqrt()
+    // }
+    //
+    // pub fn cross_len_squared(&self, rhs: &Vec4) -> f32 {
+    //     (self.y * rhs.z - self.z * rhs.y).powi(2) +
+    //         (self.x * rhs.z - self.z * rhs.x).powi(2) +
+    //         (self.x * rhs.y - self.y * rhs.x).powi(2)
+    // }
+
+    pub fn cross_len_2d(&self, rhs: &Vec4) -> f32 {
+        self.x * rhs.y - rhs.x * self.y
     }
 }
 
@@ -274,8 +289,18 @@ impl MulAssign<f32> for Vec3 {
 }
 
 impl Triangle {
-    pub const fn new(p1: Vec4, p2: Vec4, p3: Vec4) -> Triangle {
-        Triangle { p1, p2, p3 }
+    pub const fn new(p1: Vec4, p2: Vec4, p3: Vec4) -> Self {
+        Self { p1, p2, p3 }
+    }
+
+    pub fn clockwise(&self) -> Self {
+        let mut res = self.clone();
+        let v12 = &self.p2 - &self.p1;
+        let v13 = &self.p3 - &self.p1;
+        if v12.cross_len_2d(&v13) > 0.0 {
+            swap(&mut res.p1, &mut res.p2);
+        }
+        return res;
     }
 }
 

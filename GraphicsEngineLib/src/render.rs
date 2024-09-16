@@ -1,6 +1,5 @@
 use std::cmp::{max, min};
 use std::mem::swap;
-
 use crate::Color;
 use crate::game::Scene;
 use crate::math::{Mat4x4, Plane, Triangle, Vec2, Vec3, Vec4};
@@ -12,10 +11,17 @@ static BACKGROUND_COLOR: Color = Color {
     alpha: 0,
 };
 
-static WIREFRAME_LINE_COLOR: Color = Color {
+static MODEL_COLOR: Color = Color {
     red: 200,
     green: 200,
-    blue: 200,
+    blue: 0,
+    alpha: 0,
+};
+
+static WIREFRAME_LINE_COLOR: Color = Color {
+    red: 50,
+    green: 50,
+    blue: 50,
     alpha: 0,
 };
 
@@ -31,7 +37,7 @@ pub struct ScreenSize {
     pub height: i32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct DeepPixel {
     color: Color,
     depth: f32,
@@ -68,17 +74,14 @@ impl DepthBuffer {
     }
 
     fn set_screen_space_pixel(&mut self, screen_space_x: f32, screen_space_y: f32, pixel: DeepPixel) {
-        if pixel.depth < 0.0 {
-            return;
-        }
-
         let pixel_pos = self.screen_space_to_pixel_pos(screen_space_x, screen_space_y);
         self.set_pixel(pixel_pos.x, pixel_pos.y, pixel);
     }
 
     fn set_pixel(&mut self, x: i32, y: i32, pixel: DeepPixel) {
         if x < 0 || x >= self.screen_size.width ||
-            y < 0 || y >= self.screen_size.height
+            y < 0 || y >= self.screen_size.height ||
+            pixel.depth < 0.0
         {
             return;
         }
@@ -146,8 +149,12 @@ impl Camera {
             let mut projected_p3 = &perspective_mat * &tr.p3;
             projected_p3.perspective_div();
             let projected_tr = Triangle::new(projected_p1, projected_p2, projected_p3);
-            draw_screen_triangle(buffer, &projected_tr);
+
+            draw_wireframe_triangle(buffer, &projected_tr);
+            draw_triangle(buffer, &projected_tr);
         }
+
+        // println!("{:?}", buffer.buffer.iter().map(|x| x.depth).collect::<Vec<f32>>());
     }
 
     fn perspective_mat(&self, aspect_ratio: f32) -> Mat4x4 {
@@ -217,19 +224,59 @@ fn clip_triangle(triangle: Triangle, plane: &impl Plane,
     }
 }
 
-fn draw_screen_triangle(buffer: &mut DepthBuffer, tr: &Triangle) {
-    draw_screen_line(buffer, &tr.p1, &tr.p2);
-    draw_screen_line(buffer, &tr.p2, &tr.p3);
-    draw_screen_line(buffer, &tr.p3, &tr.p1);
+fn draw_triangle(buffer: &mut DepthBuffer, tr: &Triangle) {
+    let tr = tr.clockwise();
+    let p1 = tr.p1;
+    let p2 = tr.p2;
+    let p3 = tr.p3;
 
-    draw_screen_point(buffer, &tr.p1);
-    draw_screen_point(buffer, &tr.p2);
-    draw_screen_point(buffer, &tr.p3);
+    let x_min = p1.x.min(p2.x).min(p3.x);
+    let x_max = p1.x.max(p2.x).max(p3.x);
+    let y_min = p1.y.min(p2.y).min(p3.y);
+    let y_max = p1.y.max(p2.y).max(p3.y);
+
+    let pixel_bot_left = buffer.screen_space_to_pixel_pos(x_min, y_min);
+    let pixel_top_right = buffer.screen_space_to_pixel_pos(x_max, y_max);
+
+    let tr_area = (&p2 - &p1).cross_len_2d(&(&p3 - &p2));
+
+    let x_delta = (x_max - x_min) / (pixel_top_right.x - pixel_bot_left.x) as f32;
+    let y_delta = (y_max - y_min) / (pixel_top_right.y - pixel_bot_left.y) as f32;
+    let mut x = x_min;
+    let mut y = y_min;
+    for y_pixel in pixel_bot_left.y..=pixel_top_right.y {
+        for x_pixel in pixel_bot_left.x..=pixel_top_right.x {
+            let point = Vec4::new3d(x, y, 0.0);
+
+            let t1 = (&p2 - &p1).cross_len_2d(&(&point - &p1)) / tr_area;
+            let t2 = (&p3 - &p2).cross_len_2d(&(&point - &p2)) / tr_area;
+            let t3 = (&p1 - &p3).cross_len_2d(&(&point - &p3)) / tr_area;
+
+            if t1 >= 0.0 && t2 >= 0.0 && t3 >= 0.0 {
+                let pixel = DeepPixel { color: MODEL_COLOR, depth: t1 * p1.z + t2 * p2.z + t3 * p3.z };
+                buffer.set_pixel(x_pixel, y_pixel, pixel);
+            }
+
+            x += x_delta;
+        }
+        y += y_delta;
+        x = x_min;
+    }
 }
 
-fn draw_screen_line<'a>(buffer: &mut DepthBuffer,
-                        mut p1: &'a Vec4,
-                        mut p2: &'a Vec4) {
+fn draw_wireframe_triangle(buffer: &mut DepthBuffer, tr: &Triangle) {
+    draw_wireframe_line(buffer, &tr.p1, &tr.p2);
+    draw_wireframe_line(buffer, &tr.p2, &tr.p3);
+    draw_wireframe_line(buffer, &tr.p3, &tr.p1);
+
+    draw_wireframe_point(buffer, &tr.p1);
+    draw_wireframe_point(buffer, &tr.p2);
+    draw_wireframe_point(buffer, &tr.p3);
+}
+
+fn draw_wireframe_line<'a>(buffer: &mut DepthBuffer,
+                           mut p1: &'a Vec4,
+                           mut p2: &'a Vec4) {
     if p1.x > p2.x {
         swap(&mut p1, &mut p2);
     }
@@ -238,27 +285,21 @@ fn draw_screen_line<'a>(buffer: &mut DepthBuffer,
     let dy = (p2_pos.y - p1_pos.y) as f32;
     let dx = (p2_pos.x - p1_pos.x) as f32;
     if dy >= 0.0 && dx >= dy {
-        draw_screen_line_q1(buffer, p1, p2);
+        draw_wireframe_line_q1(buffer, p1, p2);
     } else if dy < 0.0 && dx >= -dy {
-        draw_screen_line_q4(buffer, p1, p2);
+        draw_wireframe_line_q4(buffer, p1, p2);
     } else if dy >= 0.0 && dx < dy {
-        draw_screen_line_q2(buffer, p1, p2);
+        draw_wireframe_line_q2(buffer, p1, p2);
     } else {
-        draw_screen_line_q3(buffer, p1, p2);
+        draw_wireframe_line_q3(buffer, p1, p2);
     }
 }
 
-fn draw_screen_line_q1(buffer: &mut DepthBuffer,
-                       p1: &Vec4,
-                       p2: &Vec4) {
+fn draw_wireframe_line_q1(buffer: &mut DepthBuffer,
+                          p1: &Vec4,
+                          p2: &Vec4) {
     let mut pixel = DeepPixel {
         color: WIREFRAME_LINE_COLOR,
-        // Color {
-        //     red: 100,
-        //     green: 0,
-        //     blue: 0,
-        //     alpha: 0,
-        // },
         depth: 0.0,
     };
 
@@ -280,17 +321,11 @@ fn draw_screen_line_q1(buffer: &mut DepthBuffer,
     }
 }
 
-fn draw_screen_line_q2(buffer: &mut DepthBuffer,
-                       p1: &Vec4,
-                       p2: &Vec4) {
+fn draw_wireframe_line_q2(buffer: &mut DepthBuffer,
+                          p1: &Vec4,
+                          p2: &Vec4) {
     let mut pixel = DeepPixel {
         color: WIREFRAME_LINE_COLOR,
-        // Color {
-        //     red: 200,
-        //     green: 0,
-        //     blue: 200,
-        //     alpha: 0,
-        // },
         depth: 0.0,
     };
 
@@ -312,17 +347,11 @@ fn draw_screen_line_q2(buffer: &mut DepthBuffer,
     }
 }
 
-fn draw_screen_line_q3(buffer: &mut DepthBuffer,
-                       p1: &Vec4,
-                       p2: &Vec4) {
+fn draw_wireframe_line_q3(buffer: &mut DepthBuffer,
+                          p1: &Vec4,
+                          p2: &Vec4) {
     let mut pixel = DeepPixel {
         color: WIREFRAME_LINE_COLOR,
-        // Color {
-        //     red: 0,
-        //     green: 190,
-        //     blue: 255,
-        //     alpha: 0,
-        // },
         depth: 0.0,
     };
 
@@ -344,17 +373,11 @@ fn draw_screen_line_q3(buffer: &mut DepthBuffer,
     }
 }
 
-fn draw_screen_line_q4(buffer: &mut DepthBuffer,
-                       p1: &Vec4,
-                       p2: &Vec4) {
+fn draw_wireframe_line_q4(buffer: &mut DepthBuffer,
+                          p1: &Vec4,
+                          p2: &Vec4) {
     let mut pixel = DeepPixel {
         color: WIREFRAME_LINE_COLOR,
-        // Color {
-        //     red: 0,
-        //     green: 100,
-        //     blue: 0,
-        //     alpha: 0,
-        // },
         depth: 0.0,
     };
 
@@ -376,24 +399,18 @@ fn draw_screen_line_q4(buffer: &mut DepthBuffer,
     }
 }
 
-fn draw_screen_point(buffer: &mut DepthBuffer,
-                     p: &Vec4) {
+fn draw_wireframe_point(buffer: &mut DepthBuffer,
+                        p: &Vec4) {
     let pixel = DeepPixel {
         color: WIREFRAME_POINT_COLOR,
-        // Color {
-        //     red: 100,
-        //     green: 100,
-        //     blue: 100,
-        //     alpha: 0,
-        // },
-        depth: p.z - 0.0001,
+        depth: p.z,
     };
 
     let pixel_pos = buffer.screen_space_to_pixel_pos(p.x, p.y);
     let point_radius = 3;
-    let left = max(0, pixel_pos.x as i32 - point_radius);
+    let left = max(0, pixel_pos.x - point_radius);
     let right = min(buffer.screen_size.width, pixel_pos.x + point_radius);
-    let bot = max(0, pixel_pos.y as i32 - point_radius);
+    let bot = max(0, pixel_pos.y - point_radius);
     let top = min(buffer.screen_size.height, pixel_pos.y + point_radius);
 
     for screen_x in left..=right {
