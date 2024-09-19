@@ -80,16 +80,6 @@ impl Vec4 {
         self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
     }
 
-    // pub fn len_2d(&self) -> f32 {
-    //     (self.x.powi(2) + self.y.powi(2)).sqrt()
-    // }
-    //
-    // pub fn cross_len_squared(&self, rhs: &Vec4) -> f32 {
-    //     (self.y * rhs.z - self.z * rhs.y).powi(2) +
-    //         (self.x * rhs.z - self.z * rhs.x).powi(2) +
-    //         (self.x * rhs.y - self.y * rhs.x).powi(2)
-    // }
-
     pub fn cross_len_2d(&self, rhs: &Vec4) -> f32 {
         self.x * rhs.y - rhs.x * self.y
     }
@@ -355,3 +345,8 @@ impl Plane for Vec4 {
         return p1 + &(&(p2 - p1) * t);
     }
 }
+
+// pub fn remap(value: f32, a: f32, b: f32, target_a: f32, target_b: f32) -> f32 {
+//     let phase = (value - a) / (b - a);
+//     return target_a + phase * (target_b - target_a);
+// }

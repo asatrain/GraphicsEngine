@@ -18,10 +18,10 @@ impl Scene {
         let scene = Scene {
             camera: Camera {
                 vertical_fov: 60.0,
-                z_near: 0.5,
+                z_near: 0.1,
                 z_far: 3.0,
                 position: Vec3::default(),
-                rotation: Vec3::new(0.0, 20.0, 0.0),
+                rotation: Vec3::new(0.0, 25.0, 0.0),
             },
             objects: vec![GameObject {
                 mesh: Mesh {
@@ -75,24 +75,6 @@ impl Scene {
             }],
         };
         scene
-        // Scene {
-        //     meshes: [Mesh {
-        //         triangles: [
-        //             Triangle::new(Vec4::new3d(-0.5, 0.0, 1.5),
-        //                           Vec4::new3d(0.0, 0.0, 1.5),
-        //                           Vec4::new3d(0.0, -1.0, 1.5)),
-        //             Triangle::new(Vec4::new3d(0.0, 0.0, 1.5),
-        //                           Vec4::new3d(0.0, 1.0, 1.5),
-        //                           Vec4::new3d(-0.5, 0.0, 1.5)),
-        //             Triangle::new(Vec4::new3d(0.0, 0.0, 1.5),
-        //                           Vec4::new3d(0.0, 1.0, 1.5),
-        //                           Vec4::new3d(2.0, 0.0, 1.5)),
-        //             Triangle::new(Vec4::new3d(0.0, 0.0, 1.5),
-        //                           Vec4::new3d(2.0, 0.0, 1.5),
-        //                           Vec4::new3d(0.0, -1.0, 1.5))
-        //         ]
-        //     }]
-        // };
     }
 }
 
@@ -106,7 +88,7 @@ fn update_object(scene: &mut Scene, delta_time: f32) {
     // offset *= 0.5 * delta_time;
     // let mut pos = &mut scene.objects[0].position;
     // pos += &offset;
-    //
+
     // let rotation_offset = 45.0 * delta_time;
     // let mut rotation = &mut scene.objects[0].rotation;
     // rotation += &Vec3::new(0.0, 0.0, rotation_offset);
@@ -132,6 +114,12 @@ fn camera_movement_dir(user_input: &UserInput) -> Vec3 {
         dir.z = 1.0;
     } else if !user_input.w_pressed && user_input.s_pressed {
         dir.z = -1.0;
+    }
+
+    if user_input.q_pressed && !user_input.e_pressed {
+        dir.y = -1.0;
+    } else if !user_input.q_pressed && user_input.e_pressed {
+        dir.y = 1.0;
     }
 
     if user_input.shift_pressed {

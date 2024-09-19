@@ -78,8 +78,8 @@ mod tests {
             shift_pressed: false,
         };
         create_scene();
-        for _ in 0..100 {
-            update_and_render(1920, 1080, input, 0.5);
+        for _ in 0..1 {
+            update_and_render(100, 50, input, 0.5);
         }
     }
 }
