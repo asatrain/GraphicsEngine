@@ -20,8 +20,8 @@ impl Scene {
                 vertical_fov: 60.0,
                 z_near: 0.1,
                 z_far: 3.0,
-                position: Vec3::default(),
-                rotation: Vec3::new(0.0, 25.0, 0.0),
+                position: Vec3::new(0.0, 0.0, -1.0),
+                rotation: Vec3::new(0.0, 0.0, 0.0),
             },
             objects: vec![GameObject {
                 mesh: Mesh {
@@ -33,7 +33,7 @@ impl Scene {
                         Triangle::new(Vec4::new3d(-0.5, -0.5, 1.5),
                                       Vec4::new3d(0.5, 0.5, 1.5),
                                       Vec4::new3d(0.5, -0.5, 1.5)),
-                        // back
+                        //     // back
                         Triangle::new(Vec4::new3d(-0.5, -0.5, 2.5),
                                       Vec4::new3d(-0.5, 0.5, 2.5),
                                       Vec4::new3d(0.5, 0.5, 2.5)),
@@ -89,9 +89,9 @@ fn update_object(scene: &mut Scene, delta_time: f32) {
     // let mut pos = &mut scene.objects[0].position;
     // pos += &offset;
 
-    // let rotation_offset = 45.0 * delta_time;
-    // let mut rotation = &mut scene.objects[0].rotation;
-    // rotation += &Vec3::new(0.0, 0.0, rotation_offset);
+    let rotation_offset = 45.0 * delta_time;
+    let mut rotation = &mut scene.objects[0].rotation;
+    rotation += &Vec3::new(0.0, 0.0, rotation_offset);
 }
 
 fn update_camera(scene: &mut Scene, user_input: &UserInput, delta_time: f32) {

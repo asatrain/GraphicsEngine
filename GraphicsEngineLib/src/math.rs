@@ -345,8 +345,3 @@ impl Plane for Vec4 {
         return p1 + &(&(p2 - p1) * t);
     }
 }
-
-// pub fn remap(value: f32, a: f32, b: f32, target_a: f32, target_b: f32) -> f32 {
-//     let phase = (value - a) / (b - a);
-//     return target_a + phase * (target_b - target_a);
-// }

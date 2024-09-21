@@ -4,8 +4,6 @@ use crate::Color;
 use std::cmp::{max, min};
 use std::mem::swap;
 
-// static ZERO_Z_INVERSE: f32 = 1000000.0;
-
 static BACKGROUND_COLOR: Color = Color {
     red: 200,
     green: 50,
@@ -102,18 +100,6 @@ impl DepthBuffer {
 }
 
 impl Camera {
-    // fn remap_ndc_z_to_inverse_z(&self, ndc_z: f32) -> f32 {
-    //     let inverse_z_far = 1.0 / self.z_far;
-    //     let inverse_z_near = 1.0 / self.z_near;
-    //     return remap(ndc_z, 0.0, 1.0, inverse_z_far, inverse_z_near);
-    // }
-    //
-    // fn remap_inverse_z_to_ndc_z(&self, inverse_z: f32) -> f32 {
-    //     let inverse_z_far = 1.0 / self.z_far;
-    //     let inverse_z_near = 1.0 / self.z_near;
-    //     return remap(inverse_z, inverse_z_far, inverse_z_near, 0.0, 1.0);
-    // }
-
     fn render(&self, buffer: &mut DepthBuffer, scene: &Scene) {
         let screen_size = &buffer.screen_size;
         let aspect_ratio = screen_size.width as f32 / screen_size.height as f32;
@@ -265,22 +251,9 @@ fn draw_triangle(buffer: &mut DepthBuffer, tr: &Triangle) {
             let t2 = (&p1 - &p3).cross_len_2d(&(&point - &p3)) / tr_area;
 
             if t1 >= 0.0 && t2 >= 0.0 && t3 >= 0.0 {
-                // let z1_inverse = if p1.z > 0.0001 { 1.0 / p1.z } else { ZERO_Z_INVERSE };
-                // let z2_inverse = if p2.z > 0.0001 { 1.0 / p2.z } else { ZERO_Z_INVERSE };
-                // let z3_inverse = if p3.z > 0.0001 { 1.0 / p3.z } else { ZERO_Z_INVERSE };
-                // let mut z = 1.0 / (t1 * z1_inverse + t2 * z2_inverse + t3 * z3_inverse);
                 let mut z = (t1 * p1.z) + (t2 * p2.z) + (t3 * p3.z);
-                // z += 0.001;
-                // let pixel = DeepPixel { color: MODEL_COLOR, depth: z };
-                let pixel = DeepPixel {
-                    color: Color {
-                        red: 0,
-                        green: (z * 255.0) as u8,
-                        blue: 0,
-                        alpha: 0,
-                    },
-                    depth: z,
-                };
+                z += 0.01 * (1.0 - z) + 0.0001;
+                let pixel = DeepPixel { color: MODEL_COLOR, depth: z };
                 buffer.set_screen_space_pixel(x, y, pixel);
             }
 
@@ -332,8 +305,6 @@ fn draw_wireframe_line_q1(buffer: &mut DepthBuffer,
 
     let dy = p2.y - p1.y;
     let dx = p2.x - p1.x;
-    // let inverse_p1_z = if p1.z > 0.0001 { 1.0 / p1.z } else { ZERO_Z_INVERSE };
-    // let inverse_p2_z = if p2.z > 0.0001 { 1.0 / p2.z } else { ZERO_Z_INVERSE };
     let dz = p2.z - p1.z;
     let (p1_pos, p2_pos) =
         (buffer.screen_space_to_pixel_pos(p1.x, p1.y), buffer.screen_space_to_pixel_pos(p2.x, p2.y));
@@ -342,7 +313,7 @@ fn draw_wireframe_line_q1(buffer: &mut DepthBuffer,
     let mut screen_y = p1.y;
     let mut screen_z = p1.z;
     for _x in p1_pos.x..=p2_pos.x {
-        pixel.depth = (screen_z - 0.001).max(0.0);
+        pixel.depth = screen_z;
         buffer.set_screen_space_pixel(screen_x, screen_y, pixel);
         screen_x += dx / pixel_dx;
         screen_y += dy / pixel_dx;
@@ -360,8 +331,6 @@ fn draw_wireframe_line_q2(buffer: &mut DepthBuffer,
 
     let dy = p2.y - p1.y;
     let dx = p2.x - p1.x;
-    // let inverse_p1_z = if p1.z > 0.0001 { 1.0 / p1.z } else { ZERO_Z_INVERSE };
-    // let inverse_p2_z = if p2.z > 0.0001 { 1.0 / p2.z } else { ZERO_Z_INVERSE };
     let dz = p2.z - p1.z;
     let (p1_pos, p2_pos) =
         (buffer.screen_space_to_pixel_pos(p1.x, p1.y), buffer.screen_space_to_pixel_pos(p2.x, p2.y));
@@ -370,7 +339,7 @@ fn draw_wireframe_line_q2(buffer: &mut DepthBuffer,
     let mut screen_y = p1.y;
     let mut screen_z = p1.z;
     for _y in p1_pos.y..=p2_pos.y {
-        pixel.depth = (screen_z - 0.001).max(0.0);
+        pixel.depth = screen_z;
         buffer.set_screen_space_pixel(screen_x, screen_y, pixel);
         screen_x += dx / pixel_dy;
         screen_y += dy / pixel_dy;
@@ -388,8 +357,6 @@ fn draw_wireframe_line_q3(buffer: &mut DepthBuffer,
 
     let dy = p2.y - p1.y;
     let dx = p2.x - p1.x;
-    // let inverse_p1_z = if p1.z > 0.0001 { 1.0 / p1.z } else { ZERO_Z_INVERSE };
-    // let inverse_p2_z = if p2.z > 0.0001 { 1.0 / p2.z } else { ZERO_Z_INVERSE };
     let dz = p2.z - p1.z;
     let (p1_pos, p2_pos) =
         (buffer.screen_space_to_pixel_pos(p1.x, p1.y), buffer.screen_space_to_pixel_pos(p2.x, p2.y));
@@ -398,7 +365,7 @@ fn draw_wireframe_line_q3(buffer: &mut DepthBuffer,
     let mut screen_y = p1.y;
     let mut screen_z = p1.z;
     for _y in p2_pos.y..=p1_pos.y {
-        pixel.depth = (screen_z - 0.001).max(0.0);
+        pixel.depth = screen_z;
         buffer.set_screen_space_pixel(screen_x, screen_y, pixel);
         screen_x += dx / pixel_dy;
         screen_y += dy / pixel_dy;
@@ -416,8 +383,6 @@ fn draw_wireframe_line_q4(buffer: &mut DepthBuffer,
 
     let dy = p2.y - p1.y;
     let dx = p2.x - p1.x;
-    // let inverse_p1_z = if p1.z > 0.0001 { 1.0 / p1.z } else { ZERO_Z_INVERSE };
-    // let inverse_p2_z = if p2.z > 0.0001 { 1.0 / p2.z } else { ZERO_Z_INVERSE };
     let dz = p2.z - p1.z;
     let (p1_pos, p2_pos) =
         (buffer.screen_space_to_pixel_pos(p1.x, p1.y), buffer.screen_space_to_pixel_pos(p2.x, p2.y));
@@ -426,7 +391,7 @@ fn draw_wireframe_line_q4(buffer: &mut DepthBuffer,
     let mut screen_y = p1.y;
     let mut screen_z = p1.z;
     for _x in p1_pos.x..=p2_pos.x {
-        pixel.depth = (screen_z - 0.001).max(0.0);
+        pixel.depth = screen_z;
         buffer.set_screen_space_pixel(screen_x, screen_y, pixel);
         screen_x += dx / pixel_dx;
         screen_y += dy / pixel_dx;

@@ -79,7 +79,7 @@ mod tests {
         };
         create_scene();
         for _ in 0..1 {
-            update_and_render(100, 50, input, 0.5);
+            update_and_render(200, 100, input, 0.5);
         }
     }
 }
