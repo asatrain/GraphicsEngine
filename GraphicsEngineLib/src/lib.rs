@@ -1,11 +1,11 @@
-use std::ptr::null_mut;
-
-use crate::game::{Scene, update_scene};
+use crate::game::{update_scene, Scene};
 use crate::render::{render, ScreenSize};
+use std::ptr::null_mut;
 
 mod render;
 mod math;
 mod game;
+mod assets;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]

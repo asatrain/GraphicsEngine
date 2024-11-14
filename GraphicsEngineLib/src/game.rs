@@ -1,4 +1,5 @@
-use crate::math::{Mat3x3, Mesh, Triangle, Vec3, Vec4};
+use crate::assets::load_model;
+use crate::math::{Mat3x3, Mesh, Vec3};
 use crate::render::Camera;
 use crate::UserInput;
 
@@ -15,61 +16,17 @@ pub struct Scene {
 
 impl Scene {
     pub fn new() -> Scene {
+        let mesh = load_model(String::from("model.obj"));
         let scene = Scene {
             camera: Camera {
                 vertical_fov: 60.0,
                 z_near: 0.1,
-                z_far: 3.0,
+                z_far: 5.0,
                 position: Vec3::new(0.0, 0.0, -1.0),
                 rotation: Vec3::new(0.0, 0.0, 0.0),
             },
             objects: vec![GameObject {
-                mesh: Mesh {
-                    triangles: vec![
-                        // front
-                        Triangle::new(Vec4::new3d(-0.5, -0.5, 1.5),
-                                      Vec4::new3d(-0.5, 0.5, 1.5),
-                                      Vec4::new3d(0.5, 0.5, 1.5)),
-                        Triangle::new(Vec4::new3d(-0.5, -0.5, 1.5),
-                                      Vec4::new3d(0.5, 0.5, 1.5),
-                                      Vec4::new3d(0.5, -0.5, 1.5)),
-                        //     // back
-                        Triangle::new(Vec4::new3d(-0.5, -0.5, 2.5),
-                                      Vec4::new3d(-0.5, 0.5, 2.5),
-                                      Vec4::new3d(0.5, 0.5, 2.5)),
-                        Triangle::new(Vec4::new3d(-0.5, -0.5, 2.5),
-                                      Vec4::new3d(0.5, 0.5, 2.5),
-                                      Vec4::new3d(0.5, -0.5, 2.5)),
-                        // left
-                        Triangle::new(Vec4::new3d(-0.5, -0.5, 1.5),
-                                      Vec4::new3d(-0.5, -0.5, 2.5),
-                                      Vec4::new3d(-0.5, 0.5, 2.5)),
-                        Triangle::new(Vec4::new3d(-0.5, -0.5, 1.5),
-                                      Vec4::new3d(-0.5, 0.5, 2.5),
-                                      Vec4::new3d(-0.5, 0.5, 1.5)),
-                        // right
-                        Triangle::new(Vec4::new3d(0.5, -0.5, 1.5),
-                                      Vec4::new3d(0.5, -0.5, 2.5),
-                                      Vec4::new3d(0.5, 0.5, 2.5)),
-                        Triangle::new(Vec4::new3d(0.5, -0.5, 1.5),
-                                      Vec4::new3d(0.5, 0.5, 2.5),
-                                      Vec4::new3d(0.5, 0.5, 1.5)),
-                        // top
-                        Triangle::new(Vec4::new3d(-0.5, 0.5, 1.5),
-                                      Vec4::new3d(-0.5, 0.5, 2.5),
-                                      Vec4::new3d(0.5, 0.5, 2.5)),
-                        Triangle::new(Vec4::new3d(-0.5, 0.5, 1.5),
-                                      Vec4::new3d(0.5, 0.5, 2.5),
-                                      Vec4::new3d(0.5, 0.5, 1.5)),
-                        // bot
-                        Triangle::new(Vec4::new3d(-0.5, -0.5, 1.5),
-                                      Vec4::new3d(-0.5, -0.5, 2.5),
-                                      Vec4::new3d(0.5, -0.5, 2.5)),
-                        Triangle::new(Vec4::new3d(-0.5, -0.5, 1.5),
-                                      Vec4::new3d(0.5, -0.5, 2.5),
-                                      Vec4::new3d(0.5, -0.5, 1.5)),
-                    ]
-                },
+                mesh,
                 position: Vec3::new(0.0, 0.0, -1.0),
                 rotation: Vec3::new(0.0, 0.0, 0.0),
             }],
@@ -89,9 +46,9 @@ fn update_object(scene: &mut Scene, delta_time: f32) {
     // let mut pos = &mut scene.objects[0].position;
     // pos += &offset;
 
-    let rotation_offset = 45.0 * delta_time;
-    let mut rotation = &mut scene.objects[0].rotation;
-    rotation += &Vec3::new(0.0, 0.0, rotation_offset);
+    // let rotation_offset = 45.0 * delta_time;
+    // let mut rotation = &mut scene.objects[0].rotation;
+    // rotation += &Vec3::new(0.0, 0.0, rotation_offset);
 }
 
 fn update_camera(scene: &mut Scene, user_input: &UserInput, delta_time: f32) {

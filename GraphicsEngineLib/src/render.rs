@@ -252,7 +252,7 @@ fn draw_triangle(buffer: &mut DepthBuffer, tr: &Triangle) {
 
             if t1 >= 0.0 && t2 >= 0.0 && t3 >= 0.0 {
                 let mut z = (t1 * p1.z) + (t2 * p2.z) + (t3 * p3.z);
-                z += 0.01 * (1.0 - z) + 0.0001;
+                z += 0.01 * (1.0 - z) + 0.000001;
                 let pixel = DeepPixel { color: MODEL_COLOR, depth: z };
                 buffer.set_screen_space_pixel(x, y, pixel);
             }

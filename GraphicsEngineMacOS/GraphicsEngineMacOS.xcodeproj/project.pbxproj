@@ -11,8 +11,24 @@
 		230379482C4AC6780053C8A2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 230379472C4AC6780053C8A2 /* Assets.xcassets */; };
 		2303794D2C4AC6780053C8A2 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 2303794C2C4AC6780053C8A2 /* main.m */; };
 		2312757F2C4F172E0047CC49 /* libgraphics_engine.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2312757D2C4F154D0047CC49 /* libgraphics_engine.a */; };
+		233771A62CE6A4D7008CC19A /* model.obj in Resources */ = {isa = PBXBuildFile; fileRef = 233771A52CE6A4D7008CC19A /* model.obj */; };
+		233771A72CE6A4DD008CC19A /* model.obj in Copy Files */ = {isa = PBXBuildFile; fileRef = 233771A52CE6A4D7008CC19A /* model.obj */; };
 		237F28602C4D5C7C00D1E0BD /* GameView.m in Sources */ = {isa = PBXBuildFile; fileRef = 237F285F2C4D5C7C00D1E0BD /* GameView.m */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		2337719D2CE68B80008CC19A /* Copy Files */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /Users/emin/Library/Containers/com.asatrain.GraphicsEngineMacOS/Data;
+			dstSubfolderSpec = 0;
+			files = (
+				233771A72CE6A4DD008CC19A /* model.obj in Copy Files */,
+			);
+			name = "Copy Files";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		2303793E2C4AC6770053C8A2 /* GraphicsEngineMacOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GraphicsEngineMacOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -22,6 +38,7 @@
 		2303794C2C4AC6780053C8A2 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		2303794E2C4AC6780053C8A2 /* GraphicsEngineMacOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GraphicsEngineMacOS.entitlements; sourceTree = "<group>"; };
 		2312757D2C4F154D0047CC49 /* libgraphics_engine.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libgraphics_engine.a; path = ../GraphicsEngineLib/target/release/libgraphics_engine.a; sourceTree = "<group>"; };
+		233771A52CE6A4D7008CC19A /* model.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = model.obj; path = ../../model.obj; sourceTree = "<group>"; };
 		237F285E2C4D5C7C00D1E0BD /* GameView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GameView.h; sourceTree = "<group>"; };
 		237F285F2C4D5C7C00D1E0BD /* GameView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GameView.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -58,6 +75,7 @@
 		230379402C4AC6770053C8A2 /* GraphicsEngineMacOS */ = {
 			isa = PBXGroup;
 			children = (
+				233771A52CE6A4D7008CC19A /* model.obj */,
 				230379412C4AC6770053C8A2 /* AppDelegate.h */,
 				230379422C4AC6770053C8A2 /* AppDelegate.m */,
 				230379472C4AC6780053C8A2 /* Assets.xcassets */,
@@ -87,6 +105,7 @@
 				2303793A2C4AC6770053C8A2 /* Sources */,
 				2303793B2C4AC6770053C8A2 /* Frameworks */,
 				2303793C2C4AC6770053C8A2 /* Resources */,
+				2337719D2CE68B80008CC19A /* Copy Files */,
 			);
 			buildRules = (
 			);
@@ -135,6 +154,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				230379482C4AC6780053C8A2 /* Assets.xcassets in Resources */,
+				233771A62CE6A4D7008CC19A /* model.obj in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -191,7 +211,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -253,7 +273,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
