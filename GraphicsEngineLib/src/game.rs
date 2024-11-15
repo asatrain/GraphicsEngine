@@ -11,6 +11,7 @@ pub struct GameObject {
 
 pub struct Scene {
     pub camera: Camera,
+    pub directional_light_rotation: Vec3,
     pub objects: Vec<GameObject>,
 }
 
@@ -25,6 +26,7 @@ impl Scene {
                 position: Vec3::new(0.0, 0.0, -1.0),
                 rotation: Vec3::new(0.0, 0.0, 0.0),
             },
+            directional_light_rotation: Vec3::new(-30.0, 0.0, 0.0),
             objects: vec![GameObject {
                 mesh,
                 position: Vec3::new(0.0, 0.0, -1.0),
@@ -63,6 +65,10 @@ fn update_camera(scene: &mut Scene, user_input: &UserInput, delta_time: f32) {
     let mut camera_rotation_offset = camera_rotation_dir(user_input);
     camera_rotation_offset *= 15.0 * delta_time;
     camera_rotation += &camera_rotation_offset;
+
+    // scene.directional_light_rotation.x += 15.0 * delta_time;
+    scene.directional_light_rotation.y += 90.0 * delta_time;
+    // scene.directional_light_rotation.z += 35.0 * delta_time;
 }
 
 fn camera_movement_dir(user_input: &UserInput) -> Vec3 {

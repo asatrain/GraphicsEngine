@@ -1,5 +1,5 @@
 use crate::game::Scene;
-use crate::math::{Mat4x4, Plane, Triangle, Vec2, Vec3, Vec4};
+use crate::math::{Lerp, Mat4x4, Plane, Triangle, Vec2, Vec3, Vec4};
 use crate::Color;
 use std::cmp::{max, min};
 use std::mem::swap;
@@ -7,6 +7,13 @@ use std::mem::swap;
 static BACKGROUND_COLOR: Color = Color {
     red: 200,
     green: 50,
+    blue: 0,
+    alpha: 0,
+};
+
+static BLACK_COLOR: Color = Color {
+    red: 0,
+    green: 0,
     blue: 0,
     alpha: 0,
 };
@@ -110,6 +117,9 @@ impl Camera {
                 let mut tr = &Mat4x4::rotation(&object.rotation) * tr;
                 tr *= &Mat4x4::translation(&object.position);
 
+                let triangle_normal = (&tr.p2 - &tr.p1).cross(&(&tr.p3 - &tr.p1)).normalized();
+                tr.world_normal = Some(triangle_normal);
+
                 let camera_negative_pos = -&scene.camera.position;
                 tr *= &Mat4x4::translation(&camera_negative_pos);
                 let camera_negative_rotation = -&scene.camera.rotation;
@@ -141,7 +151,12 @@ impl Camera {
         let top_plane = Vec4::new_plane(Vec4::new3d(0.0, 0.0, 0.0), normal);
         triangles = clip_triangles(triangles, &top_plane);
 
+        let light_direction = &(&Mat4x4::rotation(&scene.directional_light_rotation) * &Vec4::new3d(0.0, 0.0, 1.0));
+
         for tr in triangles {
+            let alpha = light_direction.dot(&tr.world_normal.unwrap());
+            let color = BLACK_COLOR.lerp(&MODEL_COLOR, alpha);
+
             let mut projected_p1 = &perspective_mat * &tr.p1;
             projected_p1.perspective_div();
             let mut projected_p2 = &perspective_mat * &tr.p2;
@@ -150,7 +165,7 @@ impl Camera {
             projected_p3.perspective_div();
             let projected_tr = Triangle::new(projected_p1, projected_p2, projected_p3);
 
-            draw_triangle(buffer, &projected_tr);
+            draw_triangle(buffer, &projected_tr, color);
             draw_wireframe_triangle(buffer, &projected_tr);
         }
     }
@@ -213,16 +228,16 @@ fn clip_triangle(triangle: Triangle, plane: &impl Plane,
     } else if inside_count == 1 {
         let intersection1 = plane.intersect_with_segment(&inside_points[0], &outside_points[0]);
         let intersection2 = plane.intersect_with_segment(&inside_points[0], &outside_points[1]);
-        *res1 = Some(Triangle::new(inside_points[0].clone(), intersection1, intersection2));
+        *res1 = Some(Triangle::new_with_normal(inside_points[0].clone(), intersection1, intersection2, triangle.world_normal));
     } else { // if inside_points == 2
         let intersection1 = plane.intersect_with_segment(&inside_points[0], &outside_points[0]);
         let intersection2 = plane.intersect_with_segment(&inside_points[1], &outside_points[0]);
-        *res1 = Some(Triangle::new(inside_points[0].clone(), inside_points[1].clone(), intersection1.clone()));
-        *res2 = Some(Triangle::new(inside_points[1].clone(), intersection2, intersection1));
+        *res1 = Some(Triangle::new_with_normal(inside_points[0].clone(), inside_points[1].clone(), intersection1.clone(), triangle.world_normal.clone()));
+        *res2 = Some(Triangle::new_with_normal(inside_points[1].clone(), intersection2, intersection1, triangle.world_normal.clone()));
     }
 }
 
-fn draw_triangle(buffer: &mut DepthBuffer, tr: &Triangle) {
+fn draw_triangle(buffer: &mut DepthBuffer, tr: &Triangle, color: Color) {
     let tr = tr.clockwise();
     let p1 = tr.p1;
     let p2 = tr.p2;
@@ -253,7 +268,8 @@ fn draw_triangle(buffer: &mut DepthBuffer, tr: &Triangle) {
             if t1 >= 0.0 && t2 >= 0.0 && t3 >= 0.0 {
                 let mut z = (t1 * p1.z) + (t2 * p2.z) + (t3 * p3.z);
                 z += 0.01 * (1.0 - z) + 0.000001;
-                let pixel = DeepPixel { color: MODEL_COLOR, depth: z };
+
+                let pixel = DeepPixel { color, depth: z };
                 buffer.set_screen_space_pixel(x, y, pixel);
             }
 

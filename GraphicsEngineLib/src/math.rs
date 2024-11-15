@@ -1,5 +1,6 @@
 use std::mem::swap;
 use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub};
+use crate::Color;
 
 #[derive(Debug)]
 pub struct Vec2<T> {
@@ -35,6 +36,7 @@ pub struct Triangle {
     pub p1: Vec4,
     pub p2: Vec4,
     pub p3: Vec4,
+    pub world_normal: Option<Vec4>,
 }
 
 pub trait Plane {
@@ -47,6 +49,31 @@ pub struct Mesh {
     pub triangles: Vec<Triangle>,
 }
 
+pub trait Lerp<T> {
+    fn lerp(&self, rhs: &T, alpha: f32) -> T;
+}
+
+impl Lerp<f32> for f32 {
+    fn lerp(&self, rhs: &f32, alpha: f32) -> f32 {
+        return self + (rhs - self) * alpha;
+    }
+}
+
+impl Lerp<Color> for Color {
+    fn lerp(&self, rhs: &Color, mut alpha: f32) -> Color {
+        if alpha < 0.0 || alpha > 1.0 {
+            alpha = alpha.clamp(0.0, 1.0);
+        }
+
+        return Color {
+            red: (self.red as f32).lerp(&(rhs.red as f32), alpha) as u8,
+            green: (self.green as f32).lerp(&(rhs.green as f32), alpha) as u8,
+            blue: (self.blue as f32).lerp(&(rhs.blue as f32), alpha) as u8,
+            alpha: (self.alpha as f32).lerp(&(rhs.alpha as f32), alpha) as u8,
+        };
+    }
+}
+
 impl<T> Vec2<T> {
     pub const fn new(x: T, y: T) -> Vec2<T> {
         Vec2 { x, y }
@@ -56,6 +83,15 @@ impl<T> Vec2<T> {
 impl Vec3 {
     pub const fn new(x: f32, y: f32, z: f32) -> Vec3 {
         Vec3 { x, y, z }
+    }
+
+    pub fn len(&self) -> f32 {
+        return (self.x.powi(2) + self.y.powi(2) + self.z.powi(2)).sqrt();
+    }
+
+    pub fn normalized(&self) -> Vec3 {
+        let self_len = self.len();
+        return Vec3::new(self.x / self_len, self.y / self_len, self.z / self_len);
     }
 }
 
@@ -80,8 +116,29 @@ impl Vec4 {
         self.x * rhs.x + self.y * rhs.y + self.z * rhs.z
     }
 
+    pub fn len(&self) -> f32 {
+        return (self.x.powi(2) + self.y.powi(2) + self.z.powi(2)).sqrt();
+    }
+
+    pub fn normalized(&self) -> Vec4 {
+        let self_len = self.len();
+        return Vec4::new3d(self.x / self_len, self.y / self_len, self.z / self_len);
+    }
+
+    // v×w=(v2w3−v3w2)i+(v3w1−v1w3)j+(v1w2−v2w1)k
+    // (a2b3−a3b2)i−(a1b3−a3b1)j+(a1b2−a2b1)k
+    pub fn cross(&self, rhs: &Vec4) -> Vec4 {
+        Vec4::new3d(self.y * rhs.z - self.z * rhs.y,
+                    self.z * rhs.x - self.x * rhs.z,
+                    self.x * rhs.y - self.y * rhs.x)
+    }
+
     pub fn cross_len_2d(&self, rhs: &Vec4) -> f32 {
         self.x * rhs.y - rhs.x * self.y
+    }
+
+    pub fn angle(&self, rhs: &Vec4) -> f32 {
+        return (self.dot(rhs) / (self.len() * rhs.len())).acos();
     }
 }
 
@@ -280,7 +337,11 @@ impl MulAssign<f32> for Vec3 {
 
 impl Triangle {
     pub const fn new(p1: Vec4, p2: Vec4, p3: Vec4) -> Self {
-        Self { p1, p2, p3 }
+        Self { p1, p2, p3, world_normal: None }
+    }
+
+    pub const fn new_with_normal(p1: Vec4, p2: Vec4, p3: Vec4, world_normal: Option<Vec4>) -> Self {
+        Self { p1, p2, p3, world_normal }
     }
 
     pub fn clockwise(&self) -> Self {
