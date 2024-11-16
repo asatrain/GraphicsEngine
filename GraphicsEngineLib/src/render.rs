@@ -165,7 +165,7 @@ impl Camera {
             projected_p3.perspective_div();
             let projected_tr = Triangle::new(projected_p1, projected_p2, projected_p3);
 
-            draw_triangle(buffer, &projected_tr, color);
+            rasterize_triangle(buffer, &projected_tr, color);
             draw_wireframe_triangle(buffer, &projected_tr);
         }
     }
@@ -237,7 +237,7 @@ fn clip_triangle(triangle: Triangle, plane: &impl Plane,
     }
 }
 
-fn draw_triangle(buffer: &mut DepthBuffer, tr: &Triangle, color: Color) {
+fn rasterize_triangle(buffer: &mut DepthBuffer, tr: &Triangle, color: Color) {
     let tr = tr.clockwise();
     let p1 = tr.p1;
     let p2 = tr.p2;
@@ -285,9 +285,9 @@ fn draw_wireframe_triangle(buffer: &mut DepthBuffer, tr: &Triangle) {
     draw_wireframe_line(buffer, &tr.p2, &tr.p3);
     draw_wireframe_line(buffer, &tr.p3, &tr.p1);
 
-    draw_wireframe_point(buffer, &tr.p1);
-    draw_wireframe_point(buffer, &tr.p2);
-    draw_wireframe_point(buffer, &tr.p3);
+    rasterize_wireframe_point(buffer, &tr.p1);
+    rasterize_wireframe_point(buffer, &tr.p2);
+    rasterize_wireframe_point(buffer, &tr.p3);
 }
 
 fn draw_wireframe_line<'a>(buffer: &mut DepthBuffer,
@@ -298,22 +298,23 @@ fn draw_wireframe_line<'a>(buffer: &mut DepthBuffer,
     }
     let (p1_pos, p2_pos) =
         (buffer.screen_space_to_pixel_pos(p1.x, p1.y), buffer.screen_space_to_pixel_pos(p2.x, p2.y));
-    let dy = (p2_pos.y - p1_pos.y) as f32;
     let dx = (p2_pos.x - p1_pos.x) as f32;
-    if dy >= 0.0 && dx >= dy {
-        draw_wireframe_line_q1(buffer, p1, p2);
-    } else if dy < 0.0 && dx >= -dy {
-        draw_wireframe_line_q4(buffer, p1, p2);
-    } else if dy >= 0.0 && dx < dy {
-        draw_wireframe_line_q2(buffer, p1, p2);
-    } else {
-        draw_wireframe_line_q3(buffer, p1, p2);
+    let dy = (p2_pos.y - p1_pos.y) as f32;
+    if (dy >= 0.0 && dx >= dy) || // q1
+        (dy < 0.0 && dx >= -dy) { // q4
+        rasterize_wireframe_line(buffer, p1, p2, p2_pos.x - p1_pos.x + 1, dx);
+    } else if dy >= 0.0 && dx < dy { // q2
+        rasterize_wireframe_line(buffer, p1, p2, p2_pos.y - p1_pos.y + 1, dy);
+    } else { // q3
+        rasterize_wireframe_line(buffer, p1, p2, p1_pos.y - p2_pos.y + 1, -dy);
     }
 }
 
-fn draw_wireframe_line_q1(buffer: &mut DepthBuffer,
-                          p1: &Vec4,
-                          p2: &Vec4) {
+fn rasterize_wireframe_line(buffer: &mut DepthBuffer,
+                            p1: &Vec4,
+                            p2: &Vec4,
+                            steps_count: i32,
+                            d_step_axis: f32) {
     let mut pixel = DeepPixel {
         color: WIREFRAME_LINE_COLOR,
         depth: 0.0,
@@ -322,101 +323,21 @@ fn draw_wireframe_line_q1(buffer: &mut DepthBuffer,
     let dy = p2.y - p1.y;
     let dx = p2.x - p1.x;
     let dz = p2.z - p1.z;
-    let (p1_pos, p2_pos) =
-        (buffer.screen_space_to_pixel_pos(p1.x, p1.y), buffer.screen_space_to_pixel_pos(p2.x, p2.y));
-    let pixel_dx = (p2_pos.x - p1_pos.x) as f32;
+
     let mut screen_x = p1.x;
     let mut screen_y = p1.y;
     let mut screen_z = p1.z;
-    for _x in p1_pos.x..=p2_pos.x {
+    for _i in 0..steps_count {
         pixel.depth = screen_z;
         buffer.set_screen_space_pixel(screen_x, screen_y, pixel);
-        screen_x += dx / pixel_dx;
-        screen_y += dy / pixel_dx;
-        screen_z += dz / pixel_dx;
+        screen_x += dx / d_step_axis;
+        screen_y += dy / d_step_axis;
+        screen_z += dz / d_step_axis;
     }
 }
 
-fn draw_wireframe_line_q2(buffer: &mut DepthBuffer,
-                          p1: &Vec4,
-                          p2: &Vec4) {
-    let mut pixel = DeepPixel {
-        color: WIREFRAME_LINE_COLOR,
-        depth: 0.0,
-    };
-
-    let dy = p2.y - p1.y;
-    let dx = p2.x - p1.x;
-    let dz = p2.z - p1.z;
-    let (p1_pos, p2_pos) =
-        (buffer.screen_space_to_pixel_pos(p1.x, p1.y), buffer.screen_space_to_pixel_pos(p2.x, p2.y));
-    let pixel_dy = (p2_pos.y - p1_pos.y) as f32;
-    let mut screen_x = p1.x;
-    let mut screen_y = p1.y;
-    let mut screen_z = p1.z;
-    for _y in p1_pos.y..=p2_pos.y {
-        pixel.depth = screen_z;
-        buffer.set_screen_space_pixel(screen_x, screen_y, pixel);
-        screen_x += dx / pixel_dy;
-        screen_y += dy / pixel_dy;
-        screen_z += dz / pixel_dy;
-    }
-}
-
-fn draw_wireframe_line_q3(buffer: &mut DepthBuffer,
-                          p1: &Vec4,
-                          p2: &Vec4) {
-    let mut pixel = DeepPixel {
-        color: WIREFRAME_LINE_COLOR,
-        depth: 0.0,
-    };
-
-    let dy = p2.y - p1.y;
-    let dx = p2.x - p1.x;
-    let dz = p2.z - p1.z;
-    let (p1_pos, p2_pos) =
-        (buffer.screen_space_to_pixel_pos(p1.x, p1.y), buffer.screen_space_to_pixel_pos(p2.x, p2.y));
-    let pixel_dy = (p1_pos.y - p2_pos.y) as f32;
-    let mut screen_x = p1.x;
-    let mut screen_y = p1.y;
-    let mut screen_z = p1.z;
-    for _y in p2_pos.y..=p1_pos.y {
-        pixel.depth = screen_z;
-        buffer.set_screen_space_pixel(screen_x, screen_y, pixel);
-        screen_x += dx / pixel_dy;
-        screen_y += dy / pixel_dy;
-        screen_z += dz / pixel_dy;
-    }
-}
-
-fn draw_wireframe_line_q4(buffer: &mut DepthBuffer,
-                          p1: &Vec4,
-                          p2: &Vec4) {
-    let mut pixel = DeepPixel {
-        color: WIREFRAME_LINE_COLOR,
-        depth: 0.0,
-    };
-
-    let dy = p2.y - p1.y;
-    let dx = p2.x - p1.x;
-    let dz = p2.z - p1.z;
-    let (p1_pos, p2_pos) =
-        (buffer.screen_space_to_pixel_pos(p1.x, p1.y), buffer.screen_space_to_pixel_pos(p2.x, p2.y));
-    let pixel_dx = (p2_pos.x - p1_pos.x) as f32;
-    let mut screen_x = p1.x;
-    let mut screen_y = p1.y;
-    let mut screen_z = p1.z;
-    for _x in p1_pos.x..=p2_pos.x {
-        pixel.depth = screen_z;
-        buffer.set_screen_space_pixel(screen_x, screen_y, pixel);
-        screen_x += dx / pixel_dx;
-        screen_y += dy / pixel_dx;
-        screen_z += dz / pixel_dx;
-    }
-}
-
-fn draw_wireframe_point(buffer: &mut DepthBuffer,
-                        p: &Vec4) {
+fn rasterize_wireframe_point(buffer: &mut DepthBuffer,
+                             p: &Vec4) {
     let pixel = DeepPixel {
         color: WIREFRAME_POINT_COLOR,
         depth: p.z,

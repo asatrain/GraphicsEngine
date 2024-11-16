@@ -39,7 +39,7 @@ impl Scene {
 
 pub fn update_scene(scene: &mut Scene, user_input: &UserInput, delta_time: f32) {
     update_camera(scene, user_input, delta_time);
-    update_object(scene, delta_time);
+    // update_object(scene, delta_time);
 }
 
 fn update_object(scene: &mut Scene, delta_time: f32) {
