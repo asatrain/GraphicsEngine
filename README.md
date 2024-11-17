@@ -3,6 +3,8 @@ This is a simple 3D graphic engine created in educational purposes.
 
 It is written natively for MacOS using Objective-C (for window creation, game loop, user input) and Rust (for rendering).
 
+No graphical API or math libraries used.
+
 - Triangle and line rasterization with Z-buffering
 - Triangle clipping
 - Parsing OBJ models
